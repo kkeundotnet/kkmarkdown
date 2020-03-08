@@ -1,18 +1,18 @@
-opam-version: "2.0.4"
+opam-version: "2.0"
 maintainer: "kkeundotnet@gmail.com"
 authors: ["kkeundotnet"]
 homepage: "https://github.com/kkeundotnet/sdown"
 bug-reports: "https://github.com/kkeundotnet/sdown/issues"
-dev-repo: "https://github.com/kkeundotnet/sdown.git"
+dev-repo: "git+https://github.com/kkeundotnet/sdown.git"
 
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
 ]
 
-build-test: ["dune" "runtest" "-p" name]
+run-test: ["dune" "runtest" "-p" name]
 
 depends: [
   "dune" {build}
-  "alcotest" {test}
+  "alcotest" {with-test}
 ]

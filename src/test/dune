@@ -1,0 +1,7 @@
+(library
+ (name sdown_test)
+ (libraries
+  alcotest
+  sdown.lib
+ )
+)

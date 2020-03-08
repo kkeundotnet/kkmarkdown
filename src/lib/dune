@@ -1,0 +1,4 @@
+(library
+ (name sdown_lib)
+ (public_name sdown.lib)
+)

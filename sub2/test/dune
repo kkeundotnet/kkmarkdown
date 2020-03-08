@@ -1,7 +1,0 @@
-(library
- (name test_sub2)
- (libraries
-  alcotest
-  proj.sub2
- )
- (synopsis "Tests for sub2"))

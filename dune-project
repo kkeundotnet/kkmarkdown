@@ -1,3 +1,3 @@
 (lang dune 1.0)
-(name proj)      ; optional
-(version 0.0.0)  ; optional
+(name sdown)     ; optional
+(version 0.0.1)  ; optional

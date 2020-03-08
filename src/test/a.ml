@@ -1,11 +1,7 @@
-(*
-   Tests for Sub2.A
-*)
-
 module F = Format
+module S = Sdown_lib.Sdown
 
-let trans input =
-  F.asprintf "%a" Proj_sub2.Sdown.pp (Proj_sub2.Sdown.trans input)
+let trans input = F.asprintf "%a" S.pp (S.trans input)
 
 let check msg expecting input =
   Alcotest.(check string) msg expecting (trans input)
