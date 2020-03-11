@@ -3,6 +3,6 @@
 *)
 
 let test_suites : unit Alcotest.test list =
-  [("Sdown_test.A", Sdown_test.A.tests)]
+  [("Kkmarkdown_test.A", Kkmarkdown_test.A.tests)]
 
-let () = Alcotest.run "Sdown" test_suites
+let () = Alcotest.run "Kkmarkdown" test_suites

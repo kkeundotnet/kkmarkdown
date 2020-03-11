@@ -1,10 +1,10 @@
-Sdown
+Kkmarkdown
 ======
 
 Small & safe markdown engine
 
 * Only a subset of markdown syntax is supported
-* No XSS is the goal
+* No XSS attack is the goal
 
 How to build the project
 --
@@ -40,7 +40,7 @@ With opam, you can install the current development version of your
 project as a single opam package. It will override the currently
 installed package of the same name, if any:
 ```
-$ opam pin add sdown .
+$ opam pin add kkmarkdown .
 ```
 For more information on `opam pin`, please consult the opam documentation.
 

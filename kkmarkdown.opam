@@ -1,9 +1,9 @@
 opam-version: "2.0"
 maintainer: "kkeundotnet@gmail.com"
 authors: ["kkeundotnet"]
-homepage: "https://github.com/kkeundotnet/sdown"
-bug-reports: "https://github.com/kkeundotnet/sdown/issues"
-dev-repo: "git+https://github.com/kkeundotnet/sdown.git"
+homepage: "https://github.com/kkeundotnet/kkmarkdown"
+bug-reports: "https://github.com/kkeundotnet/kkmarkdown/issues"
+dev-repo: "git+https://github.com/kkeundotnet/kkmarkdown.git"
 
 build: [
   ["dune" "subst"] {pinned}

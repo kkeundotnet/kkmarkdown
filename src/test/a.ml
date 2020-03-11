@@ -1,7 +1,7 @@
 module F = Format
-module S = Sdown_lib.Sdown
+module Kkmarkdown = Kkmarkdown_lib.Kkmarkdown
 
-let trans input = F.asprintf "%a" S.pp (S.trans input)
+let trans input = F.asprintf "%a" Kkmarkdown.pp (Kkmarkdown.trans input)
 
 let check msg expecting input =
   Alcotest.(check string) msg expecting (trans input)

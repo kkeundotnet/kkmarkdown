@@ -1,9 +1,9 @@
 ; names = name of the files to compile into executables
 ; public_names = name of the executables
 (executables
- (names sdown)
- (public_names sdown)
+ (names kkmarkdown)
+ (public_names kkmarkdown)
  (libraries
-  sdown.lib
+  kkmarkdown.lib
  )
- (package sdown))
+ (package kkmarkdown))

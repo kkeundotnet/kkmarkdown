@@ -1,4 +1,4 @@
 (library
- (name sdown_lib)
- (public_name sdown.lib)
+ (name kkmarkdown_lib)
+ (public_name kkmarkdown.lib)
 )

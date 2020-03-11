@@ -1,5 +1,5 @@
 module F = Format
-module Sdown = Sdown_lib.Sdown
+module Kkmarkdown = Kkmarkdown_lib.Kkmarkdown
 
 let get_intput_from_stdin () =
   let rev = ref [] in
@@ -11,12 +11,12 @@ let get_intput_from_stdin () =
   List.rev !rev
 
 let print_output_to_stdout bls =
-  Sdown.pp F.std_formatter bls ;
+  Kkmarkdown.pp F.std_formatter bls ;
   F.print_flush ()
 
 let main () =
   let input = get_intput_from_stdin () in
-  let output = Sdown.trans_from_string_list input in
+  let output = Kkmarkdown.trans_from_string_list input in
   print_output_to_stdout output
 
 let () = main ()

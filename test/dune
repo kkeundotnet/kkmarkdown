@@ -2,7 +2,7 @@
  (name run_tests)
  (libraries
   alcotest
-  sdown_test
+  kkmarkdown_test
 ))
 
 (alias
