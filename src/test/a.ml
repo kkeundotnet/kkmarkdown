@@ -31,7 +31,8 @@ let test_empty () =
   check "empty" "" "" ; check "empty" "" "\n" ; check "empty" "" "\n\n"
 
 let test_escape () =
-  check "escape" "<p>&amp;&lt;&gt;&quot;&apos;</p>" {|&<>"'|}
+  check "escape" "<p>&amp;&lt;&gt;&quot;&apos;</p>" {|&<>"'|} ;
+  check "escape" {|<p>\`*_{}[]()#+-.!</p>|} {|\\\`\*\_\{\}\[\]\(\)\#\+\-\.\!|}
 
 let test_header () =
   check "header" "<h1>abc</h1>" "# abc" ;

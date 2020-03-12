@@ -7,7 +7,7 @@ block elements
 - [done] headers
 - block quote
 - lists
-- code blocks
+- [done] code blocks
 - [done] horizontal rules
 
 span elements
@@ -19,7 +19,14 @@ later
 - restricted links
  *)
 
-type span = V of string | Br | Em of span | Strong of span | CodeSpan
+type span =
+  | NoneSpan
+  | VChar of char
+  | VSpace
+  | Br
+  | Em of span
+  | Strong of span
+  | CodeSpan
 
 type block =
   | P of span list
@@ -36,18 +43,24 @@ type block =
 
 type t = block list
 
-module EscapeMap = Map.Make (Char)
+module CharSet = Set.Make (Char)
 
-let escape_map =
-  EscapeMap.of_list
+let escape_chars =
+  CharSet.of_list
+    ['\\'; '`'; '*'; '_'; '{'; '}'; '['; ']'; '('; ')'; '#'; '+'; '-'; '.'; '!']
+
+module CharMap = Map.Make (Char)
+
+let special_chars =
+  CharMap.of_list
     [ ('&', "&amp;")
     ; ('<', "&lt;")
     ; ('>', "&gt;")
     ; ('"', "&quot;")
     ; ('\'', "&apos;") ]
 
-let pp_escape_char f c =
-  match EscapeMap.find_opt c escape_map with
+let pp_char f c =
+  match CharMap.find_opt c special_chars with
   | Some s ->
       F.pp_print_string f s
   | None ->
@@ -84,29 +97,33 @@ let pp_unicode_format f s n =
   else None
 
 let pp_escape ~unicode f s =
-  let rec pp_escape f s n =
-    let pp_char () =
-      pp_escape_char f s.[n] ;
-      (pp_escape [@tailcall]) f s (n + 1)
+  let rec pp_unicode_escape f s n =
+    let pp () =
+      pp_char f s.[n] ;
+      (pp_unicode_escape [@tailcall]) f s (n + 1)
     in
     if n < String.length s then
       if unicode then
         match pp_unicode_format f s n with
         | None ->
-            pp_char ()
+            pp ()
         | Some m ->
-            pp_escape f s (n + m)
-      else pp_char ()
+            pp_unicode_escape f s (n + m)
+      else pp ()
   in
-  pp_escape f s 0
+  pp_unicode_escape f s 0
 
 let pp_wrap tag pp f x = F.fprintf f "<%s>%a</%s>" tag pp x tag
 
 let pp_list pp f l = List.iter (pp f) l
 
 let rec pp_span f = function
-  | V s ->
-      pp_escape ~unicode:true f s
+  | NoneSpan ->
+      ()
+  | VChar c ->
+      pp_char f c
+  | VSpace ->
+      F.pp_print_char f ' '
   | Br ->
       F.pp_print_string f "<br>"
   | Em sp ->
@@ -149,6 +166,8 @@ let pp = pp_list pp_block
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
+let gen_bind2 x y f g = match f with Some _ as r -> r | None -> g x y
+
 let is_hr line =
   String.length line >= 3 && String.forall line ~f:(Char.equal '*')
 
@@ -157,12 +176,51 @@ let is_code_block_bound line =
   && ( String.forall line ~f:(Char.equal '`')
      || String.forall line ~f:(Char.equal '~') )
 
+let is_code_block_indent line = String.is_prefix line ~prefix:"    "
+
 let is_empty_line line =
   String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
 
+let remove_indent line = List.map (fun s -> String.sub_from s 4) line
+
+let rec try_escape_char cur lines =
+  match lines with
+  | line :: _
+    when cur + 1 < String.length line
+         && Char.equal line.[cur] '\\'
+         && CharSet.mem line.[cur + 1] escape_chars ->
+      Some (VChar line.[cur + 1], cur + 2, lines)
+  | _ ->
+      None
+
+let rec try_v_char cur lines =
+  match lines with
+  | [] ->
+      assert false
+  | line :: lines' -> (
+      if cur < String.length line then Some (VChar line.[cur], cur + 1, lines)
+      else
+        match lines' with
+        | [] ->
+            Some (NoneSpan, 0, lines')
+        | _ :: _ ->
+            Some (VSpace, 0, lines') )
+
 let trans_spans lines =
-  (* TODO *)
-  List.map (fun line -> V line) lines
+  let rec trans cur lines rev =
+    match lines with
+    | [] ->
+        List.rev rev
+    | _ :: _ -> (
+        let ( >>= ) = gen_bind2 cur lines in
+        None >>= try_escape_char >>= try_v_char
+        |> function
+        | None ->
+            assert false
+        | Some (span, cur, lines) ->
+            (trans [@tailcall]) cur lines (span :: rev) )
+  in
+  trans 0 lines []
 
 let trans_spans_of_line line = trans_spans [line]
 
@@ -206,22 +264,40 @@ let try_parse_header lines =
   let ( >>= ) = gen_bind lines in
   None >>= try_parse_header_by_sharp >>= try_parse_header_by_dash
 
-let try_parse_code_block = function
+let try_parse_code_block_by_bound = function
   | line :: lines when is_code_block_bound line -> (
     match List.split_by_first lines ~f:(String.equal line) with
     | None ->
         Some (CodeBlock lines, [])
-    | Some (cb, lines) ->
+    | Some (cb, _, lines) ->
         Some (CodeBlock cb, lines) )
   | _ ->
       None
+
+let try_parse_code_block_by_indent x =
+  match x with
+  | line :: lines when is_code_block_indent line -> (
+    match
+      List.split_by_first lines ~f:(fun line ->
+          not (is_code_block_indent line))
+    with
+    | None ->
+        Some (CodeBlock (remove_indent x), [])
+    | Some (cb, line, lines) ->
+        Some (CodeBlock (remove_indent cb), line :: lines) )
+  | _ ->
+      None
+
+let try_parse_code_block lines =
+  let ( >>= ) = gen_bind lines in
+  None >>= try_parse_code_block_by_bound >>= try_parse_code_block_by_indent
 
 let try_parse_p lines =
   let p, lines =
     match List.split_by_first lines ~f:is_empty_line with
     | None ->
         (lines, [])
-    | Some (p, lines) ->
+    | Some (p, _, lines) ->
         (p, lines)
   in
   Some (P (trans_spans p), lines)
