@@ -253,9 +253,11 @@ let try_parse_header_by_sharp =
       None
 
 let try_parse_header_by_dash = function
-  | line1 :: line2 :: lines when String.forall line2 ~f:(Char.equal '=') ->
+  | line1 :: line2 :: lines
+    when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '=') ->
       Some (H1 (trans_spans_of_line line1), lines)
-  | line1 :: line2 :: lines when String.forall line2 ~f:(Char.equal '-') ->
+  | line1 :: line2 :: lines
+    when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '-') ->
       Some (H2 (trans_spans_of_line line1), lines)
   | _ ->
       None

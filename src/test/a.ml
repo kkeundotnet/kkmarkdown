@@ -42,9 +42,14 @@ let test_header () =
 
 let test_hr () = check "hr" "<hr>" "***" ; check "hr" "<hr>" "******"
 
+let test_p () = check "p" {|<p>abc</p><p>def</p>|} {|abc
+
+def|}
+
 let tests =
   [ ("code block", `Quick, test_code_block)
   ; ("empty", `Quick, test_empty)
   ; ("escape", `Quick, test_escape)
   ; ("header", `Quick, test_header)
-  ; ("hr", `Quick, test_hr) ]
+  ; ("hr", `Quick, test_hr)
+  ; ("p", `Quick, test_p) ]
