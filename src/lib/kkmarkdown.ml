@@ -257,14 +257,14 @@ let trans_spans lines =
 
 let trans_spans_of_line line = trans_spans [line]
 
-let try_parse_hr = function
+let try_hr = function
   | line :: lines when is_hr line ->
       Some (Hr, lines)
   | _ ->
       None
 
-let try_parse_header_by_sharp =
-  let try_parse_header_line line =
+let try_header_by_sharp =
+  let try_header_line line =
     if String.is_prefix line ~prefix:"# " then
       Some (H1 (trans_spans_of_line (String.sub_from line 2)))
     else if String.is_prefix line ~prefix:"## " then
@@ -281,11 +281,11 @@ let try_parse_header_by_sharp =
   in
   function
   | line :: lines ->
-      try_parse_header_line line |> Option.map (fun header -> (header, lines))
+      try_header_line line |> Option.map (fun header -> (header, lines))
   | [] ->
       None
 
-let try_parse_header_by_dash = function
+let try_header_by_dash = function
   | line1 :: line2 :: lines
     when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '=') ->
       Some (H1 (trans_spans_of_line line1), lines)
@@ -295,11 +295,11 @@ let try_parse_header_by_dash = function
   | _ ->
       None
 
-let try_parse_header lines =
+let try_header lines =
   let ( >>= ) = gen_bind lines in
-  None >>= try_parse_header_by_sharp >>= try_parse_header_by_dash
+  None >>= try_header_by_sharp >>= try_header_by_dash
 
-let try_parse_code_block_by_bound = function
+let try_code_block_by_bound = function
   | line :: lines when is_code_block_bound line -> (
     match List.split_by_first lines ~f:(String.equal line) with
     | None ->
@@ -309,7 +309,7 @@ let try_parse_code_block_by_bound = function
   | _ ->
       None
 
-let try_parse_code_block_by_indent x =
+let try_code_block_by_indent x =
   match x with
   | line :: lines when is_code_block_indent line -> (
     match
@@ -323,11 +323,11 @@ let try_parse_code_block_by_indent x =
   | _ ->
       None
 
-let try_parse_code_block lines =
+let try_code_block lines =
   let ( >>= ) = gen_bind lines in
-  None >>= try_parse_code_block_by_bound >>= try_parse_code_block_by_indent
+  None >>= try_code_block_by_bound >>= try_code_block_by_indent
 
-let try_parse_p lines =
+let try_p lines =
   let p, lines =
     match List.split_by_first lines ~f:is_empty_line with
     | None ->
@@ -344,8 +344,7 @@ let trans_from_string_list lines =
         List.rev rev
     | _ -> (
         let ( >>= ) = gen_bind lines in
-        None >>= try_parse_hr >>= try_parse_code_block >>= try_parse_header
-        >>= try_parse_p
+        None >>= try_hr >>= try_code_block >>= try_header >>= try_p
         |> function
         | Some (r, lines) ->
             (trans [@tailcall]) lines (r :: rev)
