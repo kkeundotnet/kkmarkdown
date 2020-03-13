@@ -55,6 +55,10 @@ c
 
 def|}
 
+let test_strong () =
+  check "strong" {|<p><strong>abc</strong></p>|} {|**abc**|} ;
+  check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
+
 let tests =
   [ ("code block", `Quick, test_code_block)
   ; ("em", `Quick, test_em)
@@ -62,4 +66,5 @@ let tests =
   ; ("escape", `Quick, test_escape)
   ; ("header", `Quick, test_header)
   ; ("hr", `Quick, test_hr)
-  ; ("p", `Quick, test_p) ]
+  ; ("p", `Quick, test_p)
+  ; ("strong", `Quick, test_strong) ]

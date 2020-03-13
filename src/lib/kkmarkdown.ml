@@ -194,6 +194,8 @@ let remove_indent line = List.map (fun s -> String.sub_from s 4) line
 
 type status = InEm | InStrong | InEmStrong
 
+let status_equal x y = x = y
+
 type spans_cont = {cur: int; status: status list; lines: string list}
 
 let rec try_escape_char {cur; status; lines} =
@@ -206,17 +208,32 @@ let rec try_escape_char {cur; status; lines} =
   | _ ->
       None
 
-let try_em {cur; status; lines} =
+type paren =
+  {paren: string; paren_status: status; span_open: span; span_close: span}
+
+let try_paren {paren; paren_status; span_open; span_close} {cur; status; lines}
+    =
   match lines with
-  | line :: _ when cur < String.length line && Char.equal line.[cur] '*' -> (
-      let cur = cur + 1 in
+  | line :: _ when String.is_sub cur line ~sub:paren -> (
+      let cur = cur + String.length paren in
       match status with
-      | InEm :: status ->
-          Some (EmClose, {cur; status; lines})
+      | hd :: status when status_equal hd paren_status ->
+          Some (span_close, {cur; status; lines})
       | _ ->
-          Some (EmOpen, {cur; status= InEm :: status; lines}) )
+          Some (span_open, {cur; status= paren_status :: status; lines}) )
   | _ ->
       None
+
+let try_em =
+  try_paren
+    {paren= "*"; paren_status= InEm; span_open= EmOpen; span_close= EmClose}
+
+let try_strong =
+  try_paren
+    { paren= "**"
+    ; paren_status= InStrong
+    ; span_open= StrongOpen
+    ; span_close= StrongClose }
 
 let rec try_v_char {cur; status; lines} =
   match lines with
@@ -246,7 +263,7 @@ let trans_spans lines =
         close_status rev status |> List.rev
     | _ :: _ -> (
         let ( >>= ) = gen_bind {cur; status; lines} in
-        None >>= try_escape_char >>= try_em >>= try_v_char
+        None >>= try_escape_char >>= try_strong >>= try_em >>= try_v_char
         |> function
         | None ->
             assert false

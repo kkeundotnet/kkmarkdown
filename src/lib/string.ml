@@ -9,8 +9,10 @@ let foralli s ~f =
 
 let forall s ~f = foralli s ~f:(fun _i c -> f c)
 
-let is_prefix line ~prefix =
-  if length line < length prefix then false
-  else foralli prefix ~f:(fun i c -> get line i = c)
+let is_sub cur line ~sub =
+  cur + length sub <= length line
+  && foralli sub ~f:(fun i c -> get line (cur + i) = c)
+
+let is_prefix line ~prefix = is_sub 0 line ~sub:prefix
 
 let sub_from s n = sub s n (length s - n)
