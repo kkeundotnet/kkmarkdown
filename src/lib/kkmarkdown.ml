@@ -24,8 +24,10 @@ type span =
   | VChar of char
   | VSpace
   | Br
-  | Em of span
-  | Strong of span
+  | EmOpen
+  | EmClose
+  | StrongOpen
+  | StrongClose
   | CodeSpan
 
 type block =
@@ -117,6 +119,7 @@ let pp_wrap tag pp f x = F.fprintf f "<%s>%a</%s>" tag pp x tag
 
 let pp_list pp f l = List.iter (pp f) l
 
+(* TODO simplify open/close *)
 let rec pp_span f = function
   | NoneSpan ->
       ()
@@ -126,10 +129,14 @@ let rec pp_span f = function
       F.pp_print_char f ' '
   | Br ->
       F.pp_print_string f "<br>"
-  | Em sp ->
-      pp_wrap "em" pp_span f sp
-  | Strong sp ->
-      pp_wrap "strong" pp_span f sp
+  | EmOpen ->
+      F.pp_print_string f "<em>"
+  | EmClose ->
+      F.pp_print_string f "</em>"
+  | StrongOpen ->
+      F.pp_print_string f "<strong>"
+  | StrongClose ->
+      F.pp_print_string f "</strong>"
   | CodeSpan ->
       assert false
 
@@ -162,7 +169,7 @@ let pp_block f = function
 
 let pp = pp_list pp_block
 
-(* Parsing *)
+(* Parsing utils *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
@@ -183,44 +190,70 @@ let is_empty_line line =
 
 let remove_indent line = List.map (fun s -> String.sub_from s 4) line
 
-let rec try_escape_char cur lines =
+(* Parsing *)
+
+type status = InEm | InStrong | InEmStrong
+
+type spans_cont = {cur: int; status: status list; lines: string list}
+
+let rec try_escape_char {cur; status; lines} =
   match lines with
   | line :: _
     when cur + 1 < String.length line
          && Char.equal line.[cur] '\\'
          && CharSet.mem line.[cur + 1] escape_chars ->
-      Some (VChar line.[cur + 1], cur + 2, lines)
+      Some (VChar line.[cur + 1], {cur= cur + 2; status; lines})
   | _ ->
       None
 
-let rec try_v_char cur lines =
+let try_em {cur; status; lines} =
+  match lines with
+  | line :: _ when cur < String.length line && Char.equal line.[cur] '*' -> (
+      let cur = cur + 1 in
+      match status with
+      | InEm :: status ->
+          Some (EmClose, {cur; status; lines})
+      | _ ->
+          Some (EmOpen, {cur; status= InEm :: status; lines}) )
+  | _ ->
+      None
+
+let rec try_v_char {cur; status; lines} =
   match lines with
   | [] ->
       assert false
-  | line :: lines' -> (
-      if cur < String.length line then Some (VChar line.[cur], cur + 1, lines)
+  | line :: lines' ->
+      if cur < String.length line then
+        Some (VChar line.[cur], {cur= cur + 1; status; lines})
       else
-        match lines' with
-        | [] ->
-            Some (NoneSpan, 0, lines')
-        | _ :: _ ->
-            Some (VSpace, 0, lines') )
+        let r = match lines' with [] -> NoneSpan | _ :: _ -> VSpace in
+        Some (r, {cur= 0; status; lines= lines'})
+
+let rec close_status rev = function
+  | [] ->
+      rev
+  | InEm :: status ->
+      close_status (EmClose :: rev) status
+  | InStrong :: status ->
+      close_status (StrongClose :: rev) status
+  | InEmStrong :: status ->
+      close_status (EmClose :: StrongClose :: rev) status
 
 let trans_spans lines =
-  let rec trans cur lines rev =
+  let rec trans {cur; status; lines} rev =
     match lines with
     | [] ->
-        List.rev rev
+        close_status rev status |> List.rev
     | _ :: _ -> (
-        let ( >>= ) = gen_bind2 cur lines in
-        None >>= try_escape_char >>= try_v_char
+        let ( >>= ) = gen_bind {cur; status; lines} in
+        None >>= try_escape_char >>= try_em >>= try_v_char
         |> function
         | None ->
             assert false
-        | Some (span, cur, lines) ->
-            (trans [@tailcall]) cur lines (span :: rev) )
+        | Some (span, {cur; status; lines}) ->
+            (trans [@tailcall]) {cur; status; lines} (span :: rev) )
   in
-  trans 0 lines []
+  trans {cur= 0; status= []; lines} []
 
 let trans_spans_of_line line = trans_spans [line]
 

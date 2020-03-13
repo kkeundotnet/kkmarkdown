@@ -30,6 +30,10 @@ int y;
 let test_empty () =
   check "empty" "" "" ; check "empty" "" "\n" ; check "empty" "" "\n\n"
 
+let test_em () =
+  check "em" {|<p><em>abc</em></p>|} {|*abc*|} ;
+  check "em" {|<p><em>abc</em></p>|} {|*abc|}
+
 let test_escape () =
   check "escape" "<p>&amp;&lt;&gt;&quot;&apos;</p>" {|&<>"'|} ;
   check "escape" {|<p>\`*_{}[]()#+-.!</p>|} {|\\\`\*\_\{\}\[\]\(\)\#\+\-\.\!|}
@@ -42,12 +46,18 @@ let test_header () =
 
 let test_hr () = check "hr" "<hr>" "***" ; check "hr" "<hr>" "******"
 
-let test_p () = check "p" {|<p>abc</p><p>def</p>|} {|abc
+let test_p () =
+  check "p" {|<p>abc</p><p>def</p>|} {|abc
+
+def|} ;
+  check "p" {|<p>ab c</p><p>def</p>|} {|ab
+c
 
 def|}
 
 let tests =
   [ ("code block", `Quick, test_code_block)
+  ; ("em", `Quick, test_em)
   ; ("empty", `Quick, test_empty)
   ; ("escape", `Quick, test_escape)
   ; ("header", `Quick, test_header)
