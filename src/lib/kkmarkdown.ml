@@ -3,7 +3,7 @@ module F = Format
 
 (* TODO
 block elements
-- paragraph
+- [done] paragraph
 - [done] headers
 - block quote
 - lists
@@ -12,7 +12,7 @@ block elements
 
 span elements
 - line breaks
-- emphasis
+- [done] emphasis
 - code
 
 later
@@ -28,6 +28,8 @@ type span =
   | EmClose
   | StrongOpen
   | StrongClose
+  | EmStrongOpen
+  | EmStrongClose
   | CodeSpan
 
 type block =
@@ -137,6 +139,10 @@ let rec pp_span f = function
       F.pp_print_string f "<strong>"
   | StrongClose ->
       F.pp_print_string f "</strong>"
+  | EmStrongOpen ->
+      F.pp_print_string f "<em><strong>"
+  | EmStrongClose ->
+      F.pp_print_string f "</strong></em>"
   | CodeSpan ->
       assert false
 
@@ -172,8 +178,6 @@ let pp = pp_list pp_block
 (* Parsing utils *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
-
-let gen_bind2 x y f g = match f with Some _ as r -> r | None -> g x y
 
 let is_hr line =
   String.length line >= 3 && String.forall line ~f:(Char.equal '*')
@@ -235,6 +239,13 @@ let try_strong =
     ; span_open= StrongOpen
     ; span_close= StrongClose }
 
+let try_em_strong =
+  try_paren
+    { paren= "***"
+    ; paren_status= InEmStrong
+    ; span_open= EmStrongOpen
+    ; span_close= EmStrongClose }
+
 let rec try_v_char {cur; status; lines} =
   match lines with
   | [] ->
@@ -254,7 +265,7 @@ let rec close_status rev = function
   | InStrong :: status ->
       close_status (StrongClose :: rev) status
   | InEmStrong :: status ->
-      close_status (EmClose :: StrongClose :: rev) status
+      close_status (EmStrongClose :: rev) status
 
 let trans_spans lines =
   let rec trans {cur; status; lines} rev =
@@ -263,7 +274,8 @@ let trans_spans lines =
         close_status rev status |> List.rev
     | _ :: _ -> (
         let ( >>= ) = gen_bind {cur; status; lines} in
-        None >>= try_escape_char >>= try_strong >>= try_em >>= try_v_char
+        None >>= try_escape_char >>= try_em_strong >>= try_strong >>= try_em
+        >>= try_v_char
         |> function
         | None ->
             assert false

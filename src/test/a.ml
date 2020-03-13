@@ -34,6 +34,10 @@ let test_em () =
   check "em" {|<p><em>abc</em></p>|} {|*abc*|} ;
   check "em" {|<p><em>abc</em></p>|} {|*abc|}
 
+let test_em_strong () =
+  check "em_strong" {|<p><em><strong>abc</strong></em></p>|} {|***abc***|} ;
+  check "em_strong" {|<p><em><strong>abc</strong></em></p>|} {|***abc|}
+
 let test_escape () =
   check "escape" "<p>&amp;&lt;&gt;&quot;&apos;</p>" {|&<>"'|} ;
   check "escape" {|<p>\`*_{}[]()#+-.!</p>|} {|\\\`\*\_\{\}\[\]\(\)\#\+\-\.\!|}
@@ -62,6 +66,7 @@ let test_strong () =
 let tests =
   [ ("code block", `Quick, test_code_block)
   ; ("em", `Quick, test_em)
+  ; ("em_strong", `Quick, test_em_strong)
   ; ("empty", `Quick, test_empty)
   ; ("escape", `Quick, test_escape)
   ; ("header", `Quick, test_header)
