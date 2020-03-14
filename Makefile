@@ -1,11 +1,14 @@
 # Frontend to dune.
 
-.PHONY: default build install uninstall test clean
+.PHONY: default build js install uninstall test clean
 
-default: build
+default: build js
 
 build:
 	dune build
+
+js:
+	dune build src/js/kkmarkdown.js
 
 test:
 	dune runtest -f
