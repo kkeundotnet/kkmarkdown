@@ -479,7 +479,7 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     in
     let trans_elem =
       if List.exists (List.exists is_empty_line) groups then fun lines ->
-        LiP (trans_from_string_list lines)
+        LiP (trans_from_lines lines)
       else fun lines -> Li (trans_spans lines)
     in
     List.map (fun group -> List.map remove_indent group |> trans_elem) groups
@@ -530,15 +530,15 @@ and try_quote =
     | line :: lines' when is_quote_indent line -> (
       match List.split_by_first lines' ~f:is_empty_line with
       | None ->
-          Some (Quote (remove_indent lines |> trans_from_string_list), [])
+          Some (Quote (remove_indent lines |> trans_from_lines), [])
       | Some (quote, _, lines) ->
           Some
-            ( Quote (remove_indent (line :: quote) |> trans_from_string_list)
-            , lines ) )
+            (Quote (remove_indent (line :: quote) |> trans_from_lines), lines)
+      )
     | _ ->
         None
 
-and trans_from_string_list lines =
+and trans_from_lines lines =
   let rec trans lines rev =
     match List.remove_head lines ~f:is_empty_line with
     | [] ->
@@ -551,4 +551,4 @@ and trans_from_string_list lines =
   in
   trans lines []
 
-let trans s = trans_from_string_list (String.split_on_char '\n' s)
+let trans s = trans_from_lines (String.split_on_char '\n' s)

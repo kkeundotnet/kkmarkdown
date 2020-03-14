@@ -16,7 +16,7 @@ let print_output_to_stdout bls =
 
 let main () =
   let input = get_intput_from_stdin () in
-  let output = Kkmarkdown.trans_from_string_list input in
+  let output = Kkmarkdown.trans_from_lines input in
   print_output_to_stdout output
 
 let () = main ()
