@@ -1,4 +1,3 @@
-(* TODO rename *)
 module F = Format
 
 (* TODO
@@ -11,7 +10,7 @@ block elements
 - [done] horizontal rules
 
 span elements
-- line breaks
+- [done] line breaks
 - [done] emphasis
 - [done] code
 
@@ -289,6 +288,15 @@ let try_code {cur; status; lines} =
   | _ ->
       None
 
+let try_br {cur; status; lines} =
+  match lines with
+  | line :: _
+    when cur + 1 < String.length line
+         && String.forall_from cur line ~f:(Char.equal ' ') ->
+      Some (Br, {cur= String.length line; status; lines})
+  | _ ->
+      None
+
 let rec try_v_char {cur; status; lines} =
   match lines with
   | [] ->
@@ -300,17 +308,17 @@ let rec try_v_char {cur; status; lines} =
         let r = match lines' with [] -> NoneSpan | _ :: _ -> VLineSpace in
         Some (r, {cur= 0; status; lines= lines'})
 
-let rec close_status rev = function
-  | [] ->
-      rev
-  | InEm :: status ->
-      close_status (EmClose :: rev) status
-  | InStrong :: status ->
-      close_status (StrongClose :: rev) status
-  | InEmStrong :: status ->
-      close_status (EmStrongClose :: rev) status
-
-let trans_spans lines =
+let trans_spans =
+  let rec close_status rev = function
+    | [] ->
+        rev
+    | InEm :: status ->
+        close_status (EmClose :: rev) status
+    | InStrong :: status ->
+        close_status (StrongClose :: rev) status
+    | InEmStrong :: status ->
+        close_status (EmStrongClose :: rev) status
+  in
   let rec trans {cur; status; lines} rev =
     match lines with
     | [] ->
@@ -318,14 +326,14 @@ let trans_spans lines =
     | _ :: _ -> (
         let ( >>= ) = gen_bind {cur; status; lines} in
         None >>= try_escape_char >>= try_em_strong >>= try_strong >>= try_em
-        >>= try_code >>= try_v_char
+        >>= try_code >>= try_br >>= try_v_char
         |> function
         | None ->
             assert false
         | Some (span, {cur; status; lines}) ->
             (trans [@tailcall]) {cur; status; lines} (span :: rev) )
   in
-  trans {cur= 0; status= []; lines} []
+  fun lines -> trans {cur= 0; status= []; lines} []
 
 let trans_spans_of_line line = trans_spans [line]
 

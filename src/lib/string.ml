@@ -7,7 +7,9 @@ let foralli s ~f =
     true
   with Failed -> false
 
-let forall s ~f = foralli s ~f:(fun _i c -> f c)
+let forall_from n s ~f = foralli s ~f:(fun i c -> i < n || f c)
+
+let forall s ~f = forall_from 0 s ~f
 
 let is_sub cur line ~sub =
   cur + length sub <= length line

@@ -6,6 +6,14 @@ let trans input = F.asprintf "%a" Kkmarkdown.pp (Kkmarkdown.trans input)
 let check msg expecting input =
   Alcotest.(check string) msg expecting (trans input)
 
+let test_br () =
+  check "br" {|<p>hello<br>
+hi</p>|} {|hello  
+hi|} ;
+  check "br" {|<p>hello<br>
+hi</p>|} {|hello     
+hi|}
+
 let test_code () =
   check "code" {|<p>abc<code>&lt;javascript&gt;abc</code>def</p>|}
     {|abc`<javascript>abc`def|} ;
@@ -74,7 +82,8 @@ let test_strong () =
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
 
 let tests =
-  [ ("code", `Quick, test_code)
+  [ ("br", `Quick, test_br)
+  ; ("code", `Quick, test_code)
   ; ("code block", `Quick, test_code_block)
   ; ("em", `Quick, test_em)
   ; ("em_strong", `Quick, test_em_strong)
