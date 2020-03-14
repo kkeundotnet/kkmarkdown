@@ -8,7 +8,7 @@ build:
 	dune build
 
 js:
-	dune build src/js/kkmarkdown.js
+	dune build src/js/kkmarkdown-js.js
 
 test:
 	dune runtest -f
