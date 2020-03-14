@@ -62,17 +62,6 @@ let pp_close f tag = F.fprintf f "</%s>" tag
 
 let pp_wrap tag pp f x = pp_open f tag ; pp f x ; pp_close f tag
 
-let pp_list ?(pp_sep = fun _f -> ()) pp f l =
-  let rec pp_list = function
-    | [] ->
-        ()
-    | [x] ->
-        pp f x
-    | hd :: tl ->
-        pp f hd ; pp_sep f ; pp_list tl
-  in
-  pp_list l
-
 let pp_span f = function
   | NoneSpan ->
       ()
@@ -96,10 +85,10 @@ let pp_span f = function
       pp_close f "strong" ; pp_close f "em"
   | CodeSpan code ->
       pp_wrap "code"
-        (pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars)
+        (List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars)
         f code
 
-let pp_span_list = pp_list pp_span
+let pp_span_list = List.pp pp_span
 
 let pp_block f = function
   | P sps ->
@@ -121,12 +110,12 @@ let pp_block f = function
   | CodeBlock code_block ->
       pp_wrap "pre"
         (pp_wrap "code"
-           (pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars))
+           (List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars))
         f code_block
   | _ ->
       assert false
 
-let pp = pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block
+let pp = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block
 
 (* >>= *)
 
