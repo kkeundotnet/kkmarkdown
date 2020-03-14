@@ -2,10 +2,9 @@
  (name run_tests)
  (libraries
   alcotest
-  kkmarkdown_test
-))
+  kkmarkdown_test))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps run_tests.exe)
  (action (run %{deps} -q --color=always)))
