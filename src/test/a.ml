@@ -77,6 +77,37 @@ c
 
 def|}
 
+let test_quote () =
+  check "quote" {|<blockquote><p>abc</p>
+<p>def</p></blockquote>|}
+    {|> abc
+>
+> def|} ;
+  check "quote"
+    {|<blockquote><p>abc</p></blockquote>
+<blockquote><p>def</p></blockquote>|}
+    {|> abc
+
+> def|} ;
+  check "quote"
+    {|<blockquote><p>abc</p>
+<blockquote><p>hi</p></blockquote>
+<p>def</p></blockquote>|}
+    {|> abc
+>
+> > hi
+>
+> def|} ;
+  check "quote"
+    {|<blockquote><h1>header</h1>
+<p>sample code:</p>
+<pre><code>def</code></pre></blockquote>|}
+    {|> # header
+> 
+> sample code:
+>
+>     def|}
+
 let test_strong () =
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc**|} ;
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
@@ -94,5 +125,6 @@ let tests =
   ; ("header", `Quick, test_header)
   ; ("hr", `Quick, test_hr)
   ; ("p", `Quick, test_p)
+  ; ("quote", `Quick, test_quote)
   ; ("strong", `Quick, test_strong)
   ; ("unicode", `Quick, test_unicode) ]

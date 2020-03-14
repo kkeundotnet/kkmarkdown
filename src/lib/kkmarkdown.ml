@@ -2,7 +2,6 @@ module F = Format
 
 (* TODO
 block elements
-- block quote
 - lists
 
 span elements
@@ -29,12 +28,12 @@ type block =
   | H4 of span list
   | H5 of span list
   | H6 of span list
-  | Quote
+  | Quote of t
   | Lists
   | CodeBlock of string list
   | Hr
 
-type t = block list
+and t = block list
 
 (* Pretty print *)
 
@@ -90,7 +89,7 @@ let pp_span f = function
 
 let pp_span_list = List.pp pp_span
 
-let pp_block f = function
+let rec pp_block f = function
   | P sps ->
       pp_wrap "p" pp_span_list f sps
   | Hr ->
@@ -112,10 +111,12 @@ let pp_block f = function
         (pp_wrap "code"
            (List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars))
         f code_block
+  | Quote quote ->
+      pp_wrap "blockquote" pp f quote
   | _ ->
       assert false
 
-let pp = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block
+and pp f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block f
 
 (* >>= *)
 
@@ -397,15 +398,43 @@ let try_p lines =
   in
   Some (P (trans_spans p), lines)
 
-let trans_from_string_list lines =
+let rec try_quote =
+  let is_quote_indent line = String.is_prefix line ~prefix:"> " in
+  let remove_indent lines =
+    let remove_indent line =
+      if
+        String.is_prefix line ~prefix:"> "
+        || String.is_prefix line ~prefix:"  "
+      then String.sub_from line 2
+      else if
+        String.is_prefix line ~prefix:">" || String.is_prefix line ~prefix:" "
+      then String.sub_from line 1
+      else line
+    in
+    List.map remove_indent lines
+  in
+  fun lines ->
+    match lines with
+    | line :: lines' when is_quote_indent line -> (
+      match List.split_by_first lines' ~f:is_empty_line with
+      | None ->
+          Some (Quote (remove_indent lines |> trans_from_string_list), [])
+      | Some (quote, _, lines) ->
+          Some
+            ( Quote (remove_indent (line :: quote) |> trans_from_string_list)
+            , lines ) )
+    | _ ->
+        None
+
+and trans_from_string_list lines =
   let rec trans lines rev =
     match List.remove_head lines ~f:is_empty_line with
     | [] ->
         List.rev rev
-    | _ ->
+    | lines ->
         let ( >>= ) = gen_bind lines in
-        None >>= try_hr >>= try_code_block >>= try_header >>= try_p
-        |> Option.value_exn
+        None >>= try_hr >>= try_code_block >>= try_header >>= try_quote
+        >>= try_p |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
