@@ -56,68 +56,6 @@ let pp_char =
 
 let pp_chars f s = String.iter (pp_char f) s
 
-let pp_unicode_format f s n =
-  if
-    (* &#xhhhh; *)
-    n + 7 < String.length s
-    && Char.equal s.[n] '&'
-    && Char.equal s.[n + 1] '#'
-    && Char.equal s.[n + 2] 'x'
-    && Char.is_hexa s.[n + 3]
-    && Char.is_hexa s.[n + 4]
-    && Char.is_hexa s.[n + 5]
-    && Char.is_hexa s.[n + 6]
-    && Char.equal s.[n + 7] ';'
-  then (
-    F.pp_print_string f (String.sub s n 8) ;
-    Some 8 )
-  else if
-    (* &#xhhhhh; *)
-    n + 8 < String.length s
-    && Char.equal s.[n] '&'
-    && Char.equal s.[n + 1] '#'
-    && Char.equal s.[n + 2] 'x'
-    && Char.is_hexa s.[n + 3]
-    && Char.is_hexa s.[n + 4]
-    && Char.is_hexa s.[n + 5]
-    && Char.is_hexa s.[n + 6]
-    && Char.is_hexa s.[n + 7]
-    && Char.equal s.[n + 8] ';'
-  then (
-    F.pp_print_string f (String.sub s n 9) ;
-    Some 9 )
-  else if
-    (* &#nnnn; *)
-    n + 6 < String.length s
-    && Char.equal s.[n] '&'
-    && Char.equal s.[n + 1] '#'
-    && Char.is_num s.[n + 2]
-    && Char.is_num s.[n + 3]
-    && Char.is_num s.[n + 4]
-    && Char.is_num s.[n + 5]
-    && Char.equal s.[n + 6] ';'
-  then (
-    F.pp_print_string f (String.sub s n 7) ;
-    Some 7 )
-  else None
-
-let pp_escape ~unicode f s =
-  let rec pp_unicode_escape f s n =
-    let pp_one_char () =
-      pp_char f s.[n] ;
-      (pp_unicode_escape [@tailcall]) f s (n + 1)
-    in
-    if n < String.length s then
-      if unicode then
-        match pp_unicode_format f s n with
-        | None ->
-            pp_one_char ()
-        | Some m ->
-            (pp_unicode_escape [@tailcall]) f s (n + m)
-      else pp_one_char ()
-  in
-  pp_unicode_escape f s 0
-
 let pp_open f tag = F.fprintf f "<%s>" tag
 
 let pp_close f tag = F.fprintf f "</%s>" tag
@@ -183,9 +121,7 @@ let pp_block f = function
   | CodeBlock code_block ->
       pp_wrap "pre"
         (pp_wrap "code"
-           (pp_list
-              ~pp_sep:(fun f -> F.pp_print_char f '\n')
-              (fun f -> F.fprintf f "%a" (pp_escape ~unicode:false))))
+           (pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars))
         f code_block
   | _ ->
       assert false
