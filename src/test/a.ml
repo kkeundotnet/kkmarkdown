@@ -65,6 +65,28 @@ let test_header () =
 
 let test_hr () = check "hr" "<hr>" "***" ; check "hr" "<hr>" "******"
 
+let test_ol () =
+  check "ol" {|<ol><li>hi</li>
+<li>bye</li></ol>|} {|1. hi
+2. bye|} ;
+  check "ol" {|<ol><li><p>hi</p></li>
+<li><p>bye</p></li></ol>|}
+    {|1. hi
+
+2. bye|} ;
+  check "ol"
+    {|<ol><li><p>hi</p>
+<ul><li>good?</li></ul></li>
+<li><p>bye</p></li></ol>
+<ul><li>hey</li></ul>|}
+    {|1. hi
+
+    * good?
+
+2. bye
+
+* hey|}
+
 let test_p () =
   check "p" {|<p>abc</p>
 <p>def</p>|} {|abc
@@ -114,6 +136,25 @@ let test_strong () =
 
 let test_unicode () = check "unicode" {|<p>&#x1F602;</p>|} {|&#x1F602;|}
 
+let test_ul () =
+  check "ul" {|<ul><li>hi</li>
+<li>bye</li></ul>|} {|* hi
+* bye|} ;
+  check "ul" {|<ul><li><p>hi</p></li>
+<li><p>bye</p></li></ul>|}
+    {|* hi
+
+* bye|} ;
+  check "ul"
+    {|<ul><li><p>hi</p>
+<ul><li>good?</li></ul></li>
+<li><p>bye</p></li></ul>|}
+    {|* hi
+
+    * good?
+
+* bye|}
+
 let tests =
   [ ("br", `Quick, test_br)
   ; ("code", `Quick, test_code)
@@ -124,7 +165,9 @@ let tests =
   ; ("escape", `Quick, test_escape)
   ; ("header", `Quick, test_header)
   ; ("hr", `Quick, test_hr)
+  ; ("ol", `Quick, test_ol)
   ; ("p", `Quick, test_p)
   ; ("quote", `Quick, test_quote)
   ; ("strong", `Quick, test_strong)
+  ; ("ul", `Quick, test_ul)
   ; ("unicode", `Quick, test_unicode) ]

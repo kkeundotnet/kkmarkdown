@@ -1,9 +1,6 @@
 module F = Format
 
 (* TODO
-block elements
-- lists
-
 span elements
 - restricted links *)
 
@@ -29,9 +26,12 @@ type block =
   | H5 of span list
   | H6 of span list
   | Quote of t
-  | Lists
+  | Ul of li list
+  | Ol of li list
   | CodeBlock of string list
   | Hr
+
+and li = Li of span list | LiP of block list
 
 and t = block list
 
@@ -61,6 +61,8 @@ let pp_close f tag = F.fprintf f "</%s>" tag
 
 let pp_wrap tag pp f x = pp_open f tag ; pp f x ; pp_close f tag
 
+let pp_list_with_line f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') f
+
 let pp_span f = function
   | NoneSpan ->
       ()
@@ -83,9 +85,7 @@ let pp_span f = function
   | EmStrongClose ->
       pp_close f "strong" ; pp_close f "em"
   | CodeSpan code ->
-      pp_wrap "code"
-        (List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars)
-        f code
+      pp_wrap "code" (pp_list_with_line pp_chars) f code
 
 let pp_span_list = List.pp pp_span
 
@@ -107,20 +107,27 @@ let rec pp_block f = function
   | H6 sps ->
       pp_wrap "h6" pp_span_list f sps
   | CodeBlock code_block ->
-      pp_wrap "pre"
-        (pp_wrap "code"
-           (List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars))
-        f code_block
+      pp_wrap "pre" (pp_wrap "code" (pp_list_with_line pp_chars)) f code_block
   | Quote quote ->
       pp_wrap "blockquote" pp f quote
-  | _ ->
-      assert false
+  | Ol lis ->
+      pp_wrap "ol" (pp_list_with_line pp_li) f lis
+  | Ul lis ->
+      pp_wrap "ul" (pp_list_with_line pp_li) f lis
 
-and pp f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block f
+and pp_li f = function
+  | Li sps ->
+      pp_wrap "li" pp_span_list f sps
+  | LiP blocks ->
+      pp_wrap "li" pp f blocks
+
+and pp f = pp_list_with_line pp_block f
 
 (* >>= *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
+
+let y = 1
 
 (* Parse spans *)
 
@@ -310,6 +317,47 @@ let trans_spans_of_line line = trans_spans [line]
 let is_empty_line line =
   String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
 
+let is_ul_indent_start line = String.is_prefix line ~prefix:"* "
+
+let is_ol_indent_start_3 line =
+  String.length line >= 3
+  && Char.is_num line.[0]
+  && Char.equal line.[1] '.'
+  && Char.equal line.[2] ' '
+
+let is_ol_indent_start_4 line =
+  String.length line >= 4
+  && Char.is_num line.[0]
+  && Char.is_num line.[1]
+  && Char.equal line.[2] '.'
+  && Char.equal line.[3] ' '
+
+let is_ol_indent_start line =
+  is_ol_indent_start_3 line || is_ol_indent_start_4 line
+
+let remove_ul_indent line =
+  if
+    String.is_prefix line ~prefix:"*   "
+    || String.is_prefix line ~prefix:"    "
+  then String.sub_from line 4
+  else if
+    String.is_prefix line ~prefix:"*  " || String.is_prefix line ~prefix:"   "
+  then String.sub_from line 3
+  else if
+    String.is_prefix line ~prefix:"* " || String.is_prefix line ~prefix:"  "
+  then String.sub_from line 2
+  else if String.is_prefix line ~prefix:" " then String.sub_from line 1
+  else line
+
+let remove_ol_indent line =
+  if is_ol_indent_start_4 line || String.is_prefix line ~prefix:"    " then
+    String.sub_from line 4
+  else if is_ol_indent_start_3 line || String.is_prefix line ~prefix:"   " then
+    String.sub_from line 3
+  else if String.is_prefix line ~prefix:"  " then String.sub_from line 2
+  else if String.is_prefix line ~prefix:" " then String.sub_from line 1
+  else line
+
 let try_hr =
   let is_hr line =
     String.length line >= 3 && String.forall line ~f:(Char.equal '*')
@@ -370,7 +418,7 @@ let try_code_block_by_bound =
 
 let try_code_block_by_indent =
   let is_code_block_indent line = String.is_prefix line ~prefix:"    " in
-  let remove_indent line = List.map (fun s -> String.sub_from s 4) line in
+  let remove_indent lines = List.map (fun s -> String.sub_from s 4) lines in
   function
   | line :: lines as x when is_code_block_indent line -> (
     match
@@ -398,7 +446,45 @@ let try_p lines =
   in
   Some (P (trans_spans p), lines)
 
-let rec try_quote =
+let rec gen_try_xl constructor is_indent_start remove_indent =
+  let trans_xl_elems lines =
+    let groups =
+      List.strip lines ~f:is_empty_line |> List.group ~f:is_indent_start
+    in
+    let trans_elem =
+      if List.exists (List.exists is_empty_line) groups then fun lines ->
+        LiP (trans_from_string_list lines)
+      else fun lines -> Li (trans_spans lines)
+    in
+    List.map (fun group -> List.map remove_indent group |> trans_elem) groups
+  in
+  let is_xl_indent line =
+    is_indent_start line
+    || String.is_prefix line ~prefix:" "
+    || is_empty_line line
+  in
+  fun lines ->
+    match lines with
+    | line :: lines' when is_indent_start line -> (
+      match
+        List.split_by_first lines' ~f:(fun line -> not (is_xl_indent line))
+      with
+      | None ->
+          Some (constructor (trans_xl_elems lines), [])
+      | Some (xl, cont_line, cont_lines) ->
+          Some
+            (constructor (trans_xl_elems (line :: xl)), cont_line :: cont_lines)
+      )
+    | _ ->
+        None
+
+and try_ul lines =
+  gen_try_xl (fun x -> Ul x) is_ul_indent_start remove_ul_indent lines
+
+and try_ol lines =
+  gen_try_xl (fun x -> Ol x) is_ol_indent_start remove_ol_indent lines
+
+and try_quote =
   let is_quote_indent line = String.is_prefix line ~prefix:"> " in
   let remove_indent lines =
     let remove_indent line =
@@ -434,7 +520,7 @@ and trans_from_string_list lines =
     | lines ->
         let ( >>= ) = gen_bind lines in
         None >>= try_hr >>= try_code_block >>= try_header >>= try_quote
-        >>= try_p |> Option.value_exn
+        >>= try_ul >>= try_ol >>= try_p |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
