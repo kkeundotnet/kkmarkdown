@@ -3,8 +3,11 @@ Kkmarkdown
 
 Small & safe markdown engine
 
-* Only a subset of markdown syntax is supported
-* No XSS attack is the goal
+* Only a subset of markdown syntax is supported.
+* Legit HTML code generation & no XSS attack is the goal.
+
+Supported syntax are listed here:
+<https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
 
 How to build the project
 --
