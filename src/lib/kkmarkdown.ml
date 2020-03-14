@@ -13,7 +13,7 @@ block elements
 span elements
 - line breaks
 - [done] emphasis
-- code
+- [done] code
 
 later
 - restricted links
@@ -22,7 +22,7 @@ later
 type span =
   | NoneSpan
   | VChar of char
-  | VSpace
+  | VLineSpace
   | Br
   | EmOpen
   | EmClose
@@ -30,7 +30,7 @@ type span =
   | StrongClose
   | EmStrongOpen
   | EmStrongClose
-  | CodeSpan
+  | CodeSpan of string list
 
 type block =
   | P of span list
@@ -69,6 +69,8 @@ let pp_char f c =
       F.pp_print_string f s
   | None ->
       F.pp_print_char f c
+
+let pp_chars f s = String.iter (pp_char f) s
 
 let pp_unicode_format f s n =
   if
@@ -119,7 +121,16 @@ let pp_escape ~unicode f s =
 
 let pp_wrap tag pp f x = F.fprintf f "<%s>%a</%s>" tag pp x tag
 
-let pp_list pp f l = List.iter (pp f) l
+let pp_list ?(pp_sep = fun _f -> ()) pp f l =
+  let rec pp_list = function
+    | [] ->
+        ()
+    | [x] ->
+        pp f x
+    | hd :: tl ->
+        pp f hd ; pp_sep f ; pp_list tl
+  in
+  pp_list l
 
 (* TODO simplify open/close *)
 let rec pp_span f = function
@@ -127,8 +138,8 @@ let rec pp_span f = function
       ()
   | VChar c ->
       pp_char f c
-  | VSpace ->
-      F.pp_print_char f ' '
+  | VLineSpace ->
+      F.pp_print_char f '\n'
   | Br ->
       F.pp_print_string f "<br>"
   | EmOpen ->
@@ -143,8 +154,10 @@ let rec pp_span f = function
       F.pp_print_string f "<em><strong>"
   | EmStrongClose ->
       F.pp_print_string f "</strong></em>"
-  | CodeSpan ->
-      assert false
+  | CodeSpan code ->
+      pp_wrap "code"
+        (pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars)
+        f code
 
 let pp_span_list = pp_list pp_span
 
@@ -168,12 +181,14 @@ let pp_block f = function
   | CodeBlock code_block ->
       pp_wrap "pre"
         (pp_wrap "code"
-           (pp_list (fun f -> F.fprintf f "%a@\n" (pp_escape ~unicode:false))))
+           (pp_list
+              ~pp_sep:(fun f -> F.pp_print_char f '\n')
+              (fun f -> F.fprintf f "%a" (pp_escape ~unicode:false))))
         f code_block
   | _ ->
       assert false
 
-let pp = pp_list pp_block
+let pp = pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block
 
 (* Parsing utils *)
 
@@ -193,6 +208,21 @@ let is_empty_line line =
   String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
 
 let remove_indent line = List.map (fun s -> String.sub_from s 4) line
+
+let split_by_first_char c lines =
+  let rec split_by_first lines rev =
+    match lines with
+    | [] ->
+        None
+    | line :: lines -> (
+      match String.index_opt line c with
+      | None ->
+          split_by_first lines (line :: rev)
+      | Some cur ->
+          let code = String.sub line 0 cur in
+          Some (List.rev (code :: rev), cur, line :: lines) )
+  in
+  split_by_first lines []
 
 (* Parsing *)
 
@@ -246,6 +276,19 @@ let try_em_strong =
     ; span_open= EmStrongOpen
     ; span_close= EmStrongClose }
 
+let try_code {cur; status; lines} =
+  match lines with
+  | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
+    -> (
+      let line = String.sub_from line (cur + 1) in
+      match split_by_first_char '`' (line :: lines) with
+      | None ->
+          Some (CodeSpan (line :: lines), {cur= 0; status; lines= []})
+      | Some (code, cur, lines) ->
+          Some (CodeSpan code, {cur= cur + 1; status; lines}) )
+  | _ ->
+      None
+
 let rec try_v_char {cur; status; lines} =
   match lines with
   | [] ->
@@ -254,7 +297,7 @@ let rec try_v_char {cur; status; lines} =
       if cur < String.length line then
         Some (VChar line.[cur], {cur= cur + 1; status; lines})
       else
-        let r = match lines' with [] -> NoneSpan | _ :: _ -> VSpace in
+        let r = match lines' with [] -> NoneSpan | _ :: _ -> VLineSpace in
         Some (r, {cur= 0; status; lines= lines'})
 
 let rec close_status rev = function
@@ -275,7 +318,7 @@ let trans_spans lines =
     | _ :: _ -> (
         let ( >>= ) = gen_bind {cur; status; lines} in
         None >>= try_escape_char >>= try_em_strong >>= try_strong >>= try_em
-        >>= try_v_char
+        >>= try_code >>= try_v_char
         |> function
         | None ->
             assert false
