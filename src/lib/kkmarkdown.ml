@@ -1,9 +1,5 @@
 module F = Format
 
-(* TODO
-span elements
-- restricted links *)
-
 type span =
   | NoneSpan
   | CharSpan of char
@@ -16,6 +12,7 @@ type span =
   | EmStrongOpen
   | EmStrongClose
   | CodeSpan of string list
+  | A of string
 
 type block =
   | P of span list
@@ -86,6 +83,8 @@ let pp_span f = function
       pp_close f "strong" ; pp_close f "em"
   | CodeSpan code ->
       pp_wrap "code" (pp_list_with_line pp_chars) f code
+  | A s ->
+      F.fprintf f {|<a href="%s">%a</a>|} s pp_chars s
 
 let pp_span_list = List.pp pp_span
 
@@ -126,8 +125,6 @@ and pp f = pp_list_with_line pp_block f
 (* >>= *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
-
-let y = 1
 
 (* Parse spans *)
 
@@ -286,6 +283,35 @@ let try_char_span ({cur; lines; _} as cont) =
   | [] ->
       Some (NoneSpan, cont)
 
+let try_a =
+  let rec read_path_chars cur line =
+    if cur < String.length line then
+      let c = line.[cur] in
+      if Char.equal c '>' then Some cur
+      else if Char.equal c '"' || Char.equal c '\'' then None
+      else read_path_chars (cur + 1) line
+    else None
+  in
+  let read_path cur line =
+    if String.is_sub cur line ~sub:"https://" then
+      read_path_chars (cur + 8) line
+    else if String.is_sub cur line ~sub:"http://" then
+      read_path_chars (cur + 7) line
+    else None
+  in
+  fun ({cur; lines; _} as cont) ->
+    match lines with
+    | line :: _ when cur < String.length line && Char.equal line.[cur] '<' -> (
+        let start = cur + 1 in
+        match read_path start line with
+        | Some end_ ->
+            let link = String.sub line start (end_ - start) in
+            Some (A link, {cont with cur= end_ + 1})
+        | None ->
+            None )
+    | _ ->
+        None
+
 let trans_spans =
   let rec close_status rev = function
     | [] ->
@@ -304,8 +330,8 @@ let trans_spans =
     | _ :: _ ->
         let ( >>= ) = gen_bind cont in
         None >>= try_escape_char >>= try_unicode >>= try_em_strong
-        >>= try_strong >>= try_em >>= try_code >>= try_br >>= try_char_span
-        |> Option.value_exn
+        >>= try_strong >>= try_em >>= try_code >>= try_br >>= try_a
+        >>= try_char_span |> Option.value_exn
         |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
   in
   fun lines -> trans {cur= 0; status= []; lines} []
