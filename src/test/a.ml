@@ -81,6 +81,8 @@ let test_strong () =
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc**|} ;
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
 
+let test_unicode () = check "unicode" {|<p>&#x1F602;</p>|} {|&#x1F602;|}
+
 let tests =
   [ ("br", `Quick, test_br)
   ; ("code", `Quick, test_code)
@@ -92,4 +94,5 @@ let tests =
   ; ("header", `Quick, test_header)
   ; ("hr", `Quick, test_hr)
   ; ("p", `Quick, test_p)
-  ; ("strong", `Quick, test_strong) ]
+  ; ("strong", `Quick, test_strong)
+  ; ("unicode", `Quick, test_unicode) ]

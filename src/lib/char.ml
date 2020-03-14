@@ -7,3 +7,6 @@ let is_num c =
 let is_hexa c =
   let c = lowercase_ascii c in
   is_num c || c = 'a' || c = 'b' || c = 'c' || c = 'd' || c = 'e' || c = 'f'
+
+module Set = Set.Make (Stdlib.Char)
+module Map = Map.Make (Stdlib.Char)

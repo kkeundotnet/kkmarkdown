@@ -2,26 +2,16 @@ module F = Format
 
 (* TODO
 block elements
-- [done] paragraph
-- [done] headers
 - block quote
 - lists
-- [done] code blocks
-- [done] horizontal rules
 
 span elements
-- [done] line breaks
-- [done] emphasis
-- [done] code
-
-later
-- restricted links
- *)
+- restricted links *)
 
 type span =
   | NoneSpan
-  | VChar of char
-  | VLineSpace
+  | CharSpan of char
+  | UnicodeSpan of string
   | Br
   | EmOpen
   | EmClose
@@ -46,28 +36,23 @@ type block =
 
 type t = block list
 
-module CharSet = Set.Make (Char)
+(* Pretty print *)
 
-let escape_chars =
-  CharSet.of_list
-    ['\\'; '`'; '*'; '_'; '{'; '}'; '['; ']'; '('; ')'; '#'; '+'; '-'; '.'; '!']
-
-module CharMap = Map.Make (Char)
-
-let special_chars =
-  CharMap.of_list
-    [ ('&', "&amp;")
-    ; ('<', "&lt;")
-    ; ('>', "&gt;")
-    ; ('"', "&quot;")
-    ; ('\'', "&apos;") ]
-
-let pp_char f c =
-  match CharMap.find_opt c special_chars with
-  | Some s ->
-      F.pp_print_string f s
-  | None ->
-      F.pp_print_char f c
+let pp_char =
+  let special_chars =
+    Char.Map.of_list
+      [ ('&', "&amp;")
+      ; ('<', "&lt;")
+      ; ('>', "&gt;")
+      ; ('"', "&quot;")
+      ; ('\'', "&apos;") ]
+  in
+  fun f c ->
+    match Char.Map.find_opt c special_chars with
+    | Some s ->
+        F.pp_print_string f s
+    | None ->
+        F.pp_print_char f c
 
 let pp_chars f s = String.iter (pp_char f) s
 
@@ -84,8 +69,23 @@ let pp_unicode_format f s n =
     && Char.is_hexa s.[n + 6]
     && Char.equal s.[n + 7] ';'
   then (
-    let sub = String.sub s n 8 in
-    F.pp_print_string f sub ; Some 8 )
+    F.pp_print_string f (String.sub s n 8) ;
+    Some 8 )
+  else if
+    (* &#xhhhhh; *)
+    n + 8 < String.length s
+    && Char.equal s.[n] '&'
+    && Char.equal s.[n + 1] '#'
+    && Char.equal s.[n + 2] 'x'
+    && Char.is_hexa s.[n + 3]
+    && Char.is_hexa s.[n + 4]
+    && Char.is_hexa s.[n + 5]
+    && Char.is_hexa s.[n + 6]
+    && Char.is_hexa s.[n + 7]
+    && Char.equal s.[n + 8] ';'
+  then (
+    F.pp_print_string f (String.sub s n 9) ;
+    Some 9 )
   else if
     (* &#nnnn; *)
     n + 6 < String.length s
@@ -97,13 +97,13 @@ let pp_unicode_format f s n =
     && Char.is_num s.[n + 5]
     && Char.equal s.[n + 6] ';'
   then (
-    let sub = String.sub s n 7 in
-    F.pp_print_string f sub ; Some 7 )
+    F.pp_print_string f (String.sub s n 7) ;
+    Some 7 )
   else None
 
 let pp_escape ~unicode f s =
   let rec pp_unicode_escape f s n =
-    let pp () =
+    let pp_one_char () =
       pp_char f s.[n] ;
       (pp_unicode_escape [@tailcall]) f s (n + 1)
     in
@@ -111,14 +111,18 @@ let pp_escape ~unicode f s =
       if unicode then
         match pp_unicode_format f s n with
         | None ->
-            pp ()
+            pp_one_char ()
         | Some m ->
-            pp_unicode_escape f s (n + m)
-      else pp ()
+            (pp_unicode_escape [@tailcall]) f s (n + m)
+      else pp_one_char ()
   in
   pp_unicode_escape f s 0
 
-let pp_wrap tag pp f x = F.fprintf f "<%s>%a</%s>" tag pp x tag
+let pp_open f tag = F.fprintf f "<%s>" tag
+
+let pp_close f tag = F.fprintf f "</%s>" tag
+
+let pp_wrap tag pp f x = pp_open f tag ; pp f x ; pp_close f tag
 
 let pp_list ?(pp_sep = fun _f -> ()) pp f l =
   let rec pp_list = function
@@ -131,28 +135,27 @@ let pp_list ?(pp_sep = fun _f -> ()) pp f l =
   in
   pp_list l
 
-(* TODO simplify open/close *)
-let rec pp_span f = function
+let pp_span f = function
   | NoneSpan ->
       ()
-  | VChar c ->
+  | CharSpan c ->
       pp_char f c
-  | VLineSpace ->
-      F.pp_print_char f '\n'
+  | UnicodeSpan s ->
+      F.pp_print_string f s
   | Br ->
-      F.pp_print_string f "<br>"
+      pp_open f "br"
   | EmOpen ->
-      F.pp_print_string f "<em>"
+      pp_open f "em"
   | EmClose ->
-      F.pp_print_string f "</em>"
+      pp_close f "em"
   | StrongOpen ->
-      F.pp_print_string f "<strong>"
+      pp_open f "strong"
   | StrongClose ->
-      F.pp_print_string f "</strong>"
+      pp_close f "strong"
   | EmStrongOpen ->
-      F.pp_print_string f "<em><strong>"
+      pp_open f "em" ; pp_open f "strong"
   | EmStrongClose ->
-      F.pp_print_string f "</strong></em>"
+      pp_close f "strong" ; pp_close f "em"
   | CodeSpan code ->
       pp_wrap "code"
         (pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_chars)
@@ -164,7 +167,7 @@ let pp_block f = function
   | P sps ->
       pp_wrap "p" pp_span_list f sps
   | Hr ->
-      F.pp_print_string f "<hr>"
+      pp_open f "hr"
   | H1 sps ->
       pp_wrap "h1" pp_span_list f sps
   | H2 sps ->
@@ -189,41 +192,11 @@ let pp_block f = function
 
 let pp = pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') pp_block
 
-(* Parsing utils *)
+(* >>= *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
-let is_hr line =
-  String.length line >= 3 && String.forall line ~f:(Char.equal '*')
-
-let is_code_block_bound line =
-  String.length line >= 3
-  && ( String.forall line ~f:(Char.equal '`')
-     || String.forall line ~f:(Char.equal '~') )
-
-let is_code_block_indent line = String.is_prefix line ~prefix:"    "
-
-let is_empty_line line =
-  String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
-
-let remove_indent line = List.map (fun s -> String.sub_from s 4) line
-
-let split_by_first_char c lines =
-  let rec split_by_first lines rev =
-    match lines with
-    | [] ->
-        None
-    | line :: lines -> (
-      match String.index_opt line c with
-      | None ->
-          split_by_first lines (line :: rev)
-      | Some cur ->
-          let code = String.sub line 0 cur in
-          Some (List.rev (code :: rev), cur, line :: lines) )
-  in
-  split_by_first lines []
-
-(* Parsing *)
+(* Parse spans *)
 
 type status = InEm | InStrong | InEmStrong
 
@@ -231,82 +204,154 @@ let status_equal x y = x = y
 
 type spans_cont = {cur: int; status: status list; lines: string list}
 
-let rec try_escape_char {cur; status; lines} =
-  match lines with
-  | line :: _
-    when cur + 1 < String.length line
-         && Char.equal line.[cur] '\\'
-         && CharSet.mem line.[cur + 1] escape_chars ->
-      Some (VChar line.[cur + 1], {cur= cur + 2; status; lines})
-  | _ ->
-      None
+let try_escape_char =
+  let escape_chars =
+    Char.Set.of_list
+      [ '\\'
+      ; '`'
+      ; '*'
+      ; '_'
+      ; '{'
+      ; '}'
+      ; '['
+      ; ']'
+      ; '('
+      ; ')'
+      ; '#'
+      ; '+'
+      ; '-'
+      ; '.'
+      ; '!' ]
+  in
+  fun ({cur; lines; _} as cont) ->
+    match lines with
+    | line :: _
+      when cur + 1 < String.length line
+           && Char.equal line.[cur] '\\'
+           && Char.Set.mem line.[cur + 1] escape_chars ->
+        Some (CharSpan line.[cur + 1], {cont with cur= cur + 2})
+    | _ ->
+        None
 
-type paren =
-  {paren: string; paren_status: status; span_open: span; span_close: span}
+let try_unicode =
+  let get_unicode_size cur s =
+    if
+      (* &#xhhhh; *)
+      cur + 7 < String.length s
+      && Char.equal s.[cur] '&'
+      && Char.equal s.[cur + 1] '#'
+      && Char.equal s.[cur + 2] 'x'
+      && Char.is_hexa s.[cur + 3]
+      && Char.is_hexa s.[cur + 4]
+      && Char.is_hexa s.[cur + 5]
+      && Char.is_hexa s.[cur + 6]
+      && Char.equal s.[cur + 7] ';'
+    then Some 8
+    else if
+      (* &#xhhhhh; *)
+      cur + 8 < String.length s
+      && Char.equal s.[cur] '&'
+      && Char.equal s.[cur + 1] '#'
+      && Char.equal s.[cur + 2] 'x'
+      && Char.is_hexa s.[cur + 3]
+      && Char.is_hexa s.[cur + 4]
+      && Char.is_hexa s.[cur + 5]
+      && Char.is_hexa s.[cur + 6]
+      && Char.is_hexa s.[cur + 7]
+      && Char.equal s.[cur + 8] ';'
+    then Some 9
+    else if
+      (* &#nnnn; *)
+      cur + 6 < String.length s
+      && Char.equal s.[cur] '&'
+      && Char.equal s.[cur + 1] '#'
+      && Char.is_num s.[cur + 2]
+      && Char.is_num s.[cur + 3]
+      && Char.is_num s.[cur + 4]
+      && Char.is_num s.[cur + 5]
+      && Char.equal s.[cur + 6] ';'
+    then Some 7
+    else None
+  in
+  fun ({cur; lines; _} as cont) ->
+    match lines with
+    | line :: _ -> (
+      match get_unicode_size cur line with
+      | None ->
+          None
+      | Some n ->
+          Some (UnicodeSpan (String.sub line cur n), {cont with cur= cur + n})
+      )
+    | [] ->
+        None
 
-let try_paren {paren; paren_status; span_open; span_close} {cur; status; lines}
-    =
+let try_paren s in_paren ~open_ ~close {cur; status; lines} =
   match lines with
-  | line :: _ when String.is_sub cur line ~sub:paren -> (
-      let cur = cur + String.length paren in
+  | line :: _ when String.is_sub cur line ~sub:s -> (
+      let cur = cur + String.length s in
       match status with
-      | hd :: status when status_equal hd paren_status ->
-          Some (span_close, {cur; status; lines})
+      | hd :: tl when status_equal hd in_paren ->
+          Some (close, {cur; status= tl; lines})
       | _ ->
-          Some (span_open, {cur; status= paren_status :: status; lines}) )
+          Some (open_, {cur; status= in_paren :: status; lines}) )
   | _ ->
       None
 
-let try_em =
-  try_paren
-    {paren= "*"; paren_status= InEm; span_open= EmOpen; span_close= EmClose}
+let try_em = try_paren "*" InEm ~open_:EmOpen ~close:EmClose
 
-let try_strong =
-  try_paren
-    { paren= "**"
-    ; paren_status= InStrong
-    ; span_open= StrongOpen
-    ; span_close= StrongClose }
+let try_strong = try_paren "**" InStrong ~open_:StrongOpen ~close:StrongClose
 
 let try_em_strong =
-  try_paren
-    { paren= "***"
-    ; paren_status= InEmStrong
-    ; span_open= EmStrongOpen
-    ; span_close= EmStrongClose }
+  try_paren "***" InEmStrong ~open_:EmStrongOpen ~close:EmStrongClose
 
-let try_code {cur; status; lines} =
-  match lines with
-  | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
-    -> (
-      let line = String.sub_from line (cur + 1) in
-      match split_by_first_char '`' (line :: lines) with
-      | None ->
-          Some (CodeSpan (line :: lines), {cur= 0; status; lines= []})
-      | Some (code, cur, lines) ->
-          Some (CodeSpan code, {cur= cur + 1; status; lines}) )
-  | _ ->
-      None
+let try_code =
+  let split_by_first_char c lines =
+    let rec split lines rev =
+      match lines with
+      | [] ->
+          None
+      | line :: lines -> (
+        match String.index_opt line c with
+        | None ->
+            split lines (line :: rev)
+        | Some cur ->
+            let code = String.sub line 0 cur in
+            Some (List.rev (code :: rev), cur, line :: lines) )
+    in
+    split lines []
+  in
+  fun ({cur; lines; _} as cont) ->
+    match lines with
+    | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
+      -> (
+        let lines = String.sub_from line (cur + 1) :: lines in
+        match split_by_first_char '`' lines with
+        | None ->
+            Some (CodeSpan lines, {cont with cur= 0; lines= []})
+        | Some (code, cur, lines) ->
+            Some (CodeSpan code, {cont with cur= cur + 1; lines}) )
+    | _ ->
+        None
 
-let try_br {cur; status; lines} =
+let try_br ({cur; lines; _} as cont) =
   match lines with
   | line :: _
     when cur + 1 < String.length line
          && String.forall_from cur line ~f:(Char.equal ' ') ->
-      Some (Br, {cur= String.length line; status; lines})
+      Some (Br, {cont with cur= String.length line})
   | _ ->
       None
 
-let rec try_v_char {cur; status; lines} =
+let try_char_span ({cur; lines; _} as cont) =
   match lines with
-  | [] ->
-      assert false
   | line :: lines' ->
       if cur < String.length line then
-        Some (VChar line.[cur], {cur= cur + 1; status; lines})
+        Some (CharSpan line.[cur], {cont with cur= cur + 1})
       else
-        let r = match lines' with [] -> NoneSpan | _ :: _ -> VLineSpace in
-        Some (r, {cur= 0; status; lines= lines'})
+        let r = match lines' with [] -> NoneSpan | _ :: _ -> CharSpan '\n' in
+        Some (r, {cont with cur= 0; lines= lines'})
+  | [] ->
+      Some (NoneSpan, cont)
 
 let trans_spans =
   let rec close_status rev = function
@@ -319,29 +364,31 @@ let trans_spans =
     | InEmStrong :: status ->
         close_status (EmStrongClose :: rev) status
   in
-  let rec trans {cur; status; lines} rev =
+  let rec trans ({status; lines; _} as cont) rev =
     match lines with
     | [] ->
         close_status rev status |> List.rev
-    | _ :: _ -> (
-        let ( >>= ) = gen_bind {cur; status; lines} in
-        None >>= try_escape_char >>= try_em_strong >>= try_strong >>= try_em
-        >>= try_code >>= try_br >>= try_v_char
-        |> function
-        | None ->
-            assert false
-        | Some (span, {cur; status; lines}) ->
-            (trans [@tailcall]) {cur; status; lines} (span :: rev) )
+    | _ :: _ ->
+        let ( >>= ) = gen_bind cont in
+        None >>= try_escape_char >>= try_unicode >>= try_em_strong
+        >>= try_strong >>= try_em >>= try_code >>= try_br >>= try_char_span
+        |> Option.value_exn
+        |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
   in
   fun lines -> trans {cur= 0; status= []; lines} []
 
 let trans_spans_of_line line = trans_spans [line]
 
-let try_hr = function
-  | line :: lines when is_hr line ->
-      Some (Hr, lines)
-  | _ ->
-      None
+(* Parse blocks *)
+
+let is_empty_line line =
+  String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
+
+let try_hr =
+  let is_hr line =
+    String.length line >= 3 && String.forall line ~f:(Char.equal '*')
+  in
+  function line :: lines when is_hr line -> Some (Hr, lines) | _ -> None
 
 let try_header_by_sharp =
   let try_header_line line =
@@ -379,7 +426,13 @@ let try_header lines =
   let ( >>= ) = gen_bind lines in
   None >>= try_header_by_sharp >>= try_header_by_dash
 
-let try_code_block_by_bound = function
+let try_code_block_by_bound =
+  let is_code_block_bound line =
+    String.length line >= 3
+    && ( String.forall line ~f:(Char.equal '`')
+       || String.forall line ~f:(Char.equal '~') )
+  in
+  function
   | line :: lines when is_code_block_bound line -> (
     match List.split_by_first lines ~f:(String.equal line) with
     | None ->
@@ -389,9 +442,11 @@ let try_code_block_by_bound = function
   | _ ->
       None
 
-let try_code_block_by_indent x =
-  match x with
-  | line :: lines when is_code_block_indent line -> (
+let try_code_block_by_indent =
+  let is_code_block_indent line = String.is_prefix line ~prefix:"    " in
+  let remove_indent line = List.map (fun s -> String.sub_from s 4) line in
+  function
+  | line :: lines as x when is_code_block_indent line -> (
     match
       List.split_by_first lines ~f:(fun line ->
           not (is_code_block_indent line))
@@ -422,15 +477,11 @@ let trans_from_string_list lines =
     match List.remove_head lines ~f:is_empty_line with
     | [] ->
         List.rev rev
-    | _ -> (
+    | _ ->
         let ( >>= ) = gen_bind lines in
         None >>= try_hr >>= try_code_block >>= try_header >>= try_p
-        |> function
-        | Some (r, lines) ->
-            (trans [@tailcall]) lines (r :: rev)
-        | None ->
-            (* TODO: exit 1 *)
-            rev )
+        |> Option.value_exn
+        |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
 
