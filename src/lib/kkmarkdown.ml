@@ -376,8 +376,13 @@ let remove_ul_indent line =
   else line
 
 let remove_ol_indent line =
-  if is_ol_indent_start_4 line || String.is_prefix line ~prefix:"    " then
-    String.sub_from line 4
+  if
+    is_ol_indent_start_4 line
+    || String.length line >= 4
+       && is_ol_indent_start_3 line
+       && Char.equal line.[3] ' '
+    || String.is_prefix line ~prefix:"    "
+  then String.sub_from line 4
   else if is_ol_indent_start_3 line || String.is_prefix line ~prefix:"   " then
     String.sub_from line 3
   else if String.is_prefix line ~prefix:"  " then String.sub_from line 2

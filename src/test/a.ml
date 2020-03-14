@@ -95,7 +95,12 @@ let test_ol () =
 
 2. bye
 
-* hey|}
+* hey|} ;
+  check "ol" {|<ol><li><p>hi</p></li>
+<li><p>bye</p></li></ol>|}
+    {|1.  hi
+
+2.  bye|}
 
 let test_p () =
   check "p" {|<p>abc</p>
