@@ -12,7 +12,6 @@
  (package kkmarkdown))
 
 (rule
-  (targets kkmarkdown-js.js)
-  (action
-    (run %{bin:js_of_ocaml} --noruntime %{lib:js_of_ocaml-compiler:runtime.js}
-         %{dep:kkmarkdownJs.bc} -o %{targets} --pretty)))
+ (targets kkmarkdown-js.js)
+ (action
+  (run %{bin:js_of_ocaml} %{dep:kkmarkdownJs.bc} -o %{targets})))
