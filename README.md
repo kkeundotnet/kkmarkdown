@@ -9,44 +9,53 @@ Small & safe markdown engine
 Supported syntax are listed here:
 <https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
 
-How to build the project
---
+How to build
+---
 
-Run `make` to compile the libraries and executables that are
-meant to be installed.
 ```
 $ make
-```
-
-How to run tests
---
-
-```
 $ make test
 ```
 
+It will make
+
+* one executable `_build/defualt/src/bin/kkmarkdown.exe` (samely
+  `_build/install/default/bin/kkmarkdown`)
+* one javascript `_build/default/src/js/kkmarkdown-js.js`
+
+In shell (using stdin):
+
+```
+$ kkmarkdown
+*abc* (then control+D)
+<p><em>abc</em></p>
+```
+
+or (using file)
+
+```
+$ echo "*abc*" > a
+$ kkmarkdown a
+<p><em>abc</em></p>
+```
+
+In html:
+
+```
+<script src='https://kkeun.net/kkmarkdown-js.js'></script>
+<script>result = kkmarkdown.trans("*abc*");</script>
+```
+
 Installation
---
+---
 
-The project can be installed with or without opam.
-Without opam, you can run the following which relies directly on
-dune:
-```
-$ make install
-```
-Similarly:
-```
-$ make uninstall
-```
-
-With opam, you can install the current development version of your
-project as a single opam package. It will override the currently
-installed package of the same name, if any:
 ```
 $ opam pin add kkmarkdown .
 ```
-For more information on `opam pin`, please consult the opam documentation.
 
-The advantage of the opam-based method is that other opam packages can
-depend on this one, and opam will recompile them automatically as
-necessary.
+or
+
+```
+$ make install
+$ make uninstall
+```
