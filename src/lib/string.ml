@@ -3,7 +3,7 @@ include Stdlib.String
 let foralli s ~f =
   let exception Failed in
   try
-    iteri (fun i c -> if f i c then () else raise Failed) s ;
+    iteri (fun i c -> if f i c then () else raise Failed) s;
     true
   with Failed -> false
 
@@ -18,3 +18,12 @@ let is_sub cur line ~sub =
 let is_prefix line ~prefix = is_sub 0 line ~sub:prefix
 
 let sub_from s n = sub s n (length s - n)
+
+let split_on_chars chars s =
+  let rec split_on_chars chars lines =
+    match chars with
+    | [] -> lines
+    | c :: tl ->
+        List.map (split_on_char c) lines |> List.flatten |> split_on_chars tl
+  in
+  split_on_chars chars [ s ]

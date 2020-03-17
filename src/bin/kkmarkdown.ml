@@ -24,12 +24,12 @@ let main () =
       done
     with End_of_file ->
       close_in_noerr ic;
-      Kkmarkdown.trans_from_lines (List.rev !rev_lines)
+      Kkmarkdown.trans_from_strings (List.rev !rev_lines)
       |> Kkmarkdown.pp F.std_formatter;
       F.print_flush () )
   else
     let input = get_intput_from_stdin () in
-    let output = Kkmarkdown.trans_from_lines input in
+    let output = Kkmarkdown.trans_from_strings input in
     print_output_to_stdout output
 
 let () = main ()

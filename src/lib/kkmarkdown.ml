@@ -507,6 +507,10 @@ and trans_from_lines lines =
   in
   trans lines []
 
-let trans s = trans_from_lines (String.split_on_char '\n' s)
+let trans_from_strings strs =
+  List.map (String.split_on_chars [ '\n'; '\r' ]) strs
+  |> List.flatten |> trans_from_lines
+
+let trans s = trans_from_strings [ s ]
 
 let trans_to_string s = trans s |> F.asprintf "%a" pp
