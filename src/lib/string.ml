@@ -19,11 +19,16 @@ let is_prefix line ~prefix = is_sub 0 line ~sub:prefix
 
 let sub_from s n = sub s n (length s - n)
 
-let split_on_chars chars s =
-  let rec split_on_chars chars lines =
-    match chars with
-    | [] -> lines
-    | c :: tl ->
-        List.map (split_on_char c) lines |> List.flatten |> split_on_chars tl
+let split_to_lines s =
+  let rec split start cur rev =
+    if cur < length s then
+      if is_sub cur s ~sub:"\r\n" then
+        let prev = sub s start (cur - start) in
+        split (cur + 2) (cur + 2) (prev :: rev)
+      else if is_sub cur s ~sub:"\n" then
+        let prev = sub s start (cur - start) in
+        split (cur + 1) (cur + 1) (prev :: rev)
+      else split start (cur + 1) rev
+    else sub s start (cur - start) :: rev |> List.rev
   in
-  split_on_chars chars [ s ]
+  split 0 0 []

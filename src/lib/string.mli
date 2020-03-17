@@ -10,4 +10,4 @@ val is_prefix : string -> prefix:string -> bool
 
 val sub_from : string -> int -> string
 
-val split_on_chars : char list -> string -> string list
+val split_to_lines : string -> string list
