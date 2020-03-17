@@ -2,16 +2,13 @@ module F = Format
 module Kkmarkdown = Kkmarkdown_lib.Kkmarkdown
 
 let get_input_from_channel ch =
-  let rev_lines = ref [] in
+  let buf = Buffer.create 256 in
   ( try
       while true do
-        rev_lines := input_line ch :: !rev_lines
+        Buffer.add_char buf (input_char ch)
       done
     with End_of_file -> () );
-  (* NOTE: It concatenates "lines" to a string, then split them again
-     in [Kkmarkdown.trans].  This inefficient way is to address the
-     cariage return. *)
-  List.rev !rev_lines |> String.concat "\n"
+  Buffer.contents buf
 
 let get_input_from_stdin () = get_input_from_channel stdin
 
