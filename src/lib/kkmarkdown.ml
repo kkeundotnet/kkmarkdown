@@ -27,6 +27,7 @@ type block =
   | Ol of li list
   | CodeBlock of string list
   | Hr
+  | UnsafeImg of { link : string; classes : string list }
 
 and li = Li of span list | LiP of block list
 
@@ -97,6 +98,16 @@ let rec pp_block f = function
   | Quote quote -> pp_wrap "blockquote" pp f quote
   | Ol lis -> pp_wrap "ol" (pp_list_with_line pp_li) f lis
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
+  | UnsafeImg { link; classes } ->
+      let pp_classes f classes =
+        List.pp
+          ~pp_sep:(fun f -> F.pp_print_char f ' ')
+          F.pp_print_string f classes
+      in
+      let pp_img f () =
+        F.fprintf f {|<img src="%s" class="%a">|} link pp_classes classes
+      in
+      pp_wrap "p" pp_img f ()
 
 and pp_li f = function
   | Li sps -> pp_wrap "li" pp_span_list f sps
@@ -434,14 +445,54 @@ let try_p lines =
   in
   Some (P (trans_spans p), lines)
 
+let try_unsafe try_f ~unsafe lines = if unsafe then try_f lines else None
+
+(* ![ link ] { classes } *)
+let try_unsafe_img =
+  let read_until cur line c =
+    String.index_from_opt line cur c
+    |> Option.map (fun cur' -> (cur' + 1, String.sub line cur (cur' - cur)))
+  in
+  let rec read_spaces cur line =
+    if cur < String.length line && Char.equal line.[cur] ' ' then
+      read_spaces (cur + 1) line
+    else cur
+  in
+  let read_classes classes =
+    String.split_on_char ' ' classes
+    |> List.filter_map (fun class_ ->
+           if String.length class_ >= 2 && Char.equal class_.[0] '.' then (
+             prerr_endline class_;
+             Some (String.sub_from class_ 1) )
+           else None)
+  in
+  let check b = if b then Some () else None in
+  try_unsafe @@ function
+  | [] -> None
+  | line :: lines ->
+      let ( let* ) = Option.bind in
+      let* () =
+        check
+          ( 1 < String.length line
+          && Char.equal line.[0] '!'
+          && Char.equal line.[1] '[' )
+      in
+      let* cur, link = read_until 2 line ']' in
+      let cur = read_spaces cur line in
+      let* () = check (cur < String.length line && Char.equal line.[cur] '{') in
+      let* _cur, classes = read_until (cur + 1) line '}' in
+      let link = String.trim link in
+      let classes = read_classes classes in
+      Some (UnsafeImg { link; classes }, lines)
+
 let rec gen_try_xl constructor is_indent_start remove_indent =
-  let trans_xl_elems lines =
+  let trans_xl_elems ~unsafe lines =
     let groups =
       List.strip lines ~f:is_empty_line |> List.group ~f:is_indent_start
     in
     let trans_elem =
       if List.exists (List.exists is_empty_line) groups then fun lines ->
-        LiP (trans_from_lines lines)
+        LiP (trans_from_lines ~unsafe lines)
       else fun lines -> Li (trans_spans lines)
     in
     List.map (fun group -> List.map remove_indent group |> trans_elem) groups
@@ -451,24 +502,24 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     || String.is_prefix line ~prefix:" "
     || is_empty_line line
   in
-  fun lines ->
+  fun ~unsafe lines ->
     match lines with
     | line :: lines' when is_indent_start line -> (
         match
           List.split_by_first lines' ~f:(fun line -> not (is_xl_indent line))
         with
-        | None -> Some (constructor (trans_xl_elems lines), [])
+        | None -> Some (constructor (trans_xl_elems ~unsafe lines), [])
         | Some (xl, cont_line, cont_lines) ->
             Some
-              ( constructor (trans_xl_elems (line :: xl)),
+              ( constructor (trans_xl_elems ~unsafe (line :: xl)),
                 cont_line :: cont_lines ) )
     | _ -> None
 
-and try_ul lines =
-  gen_try_xl (fun x -> Ul x) is_ul_indent_start remove_ul_indent lines
+and try_ul ~unsafe lines =
+  gen_try_xl (fun x -> Ul x) is_ul_indent_start remove_ul_indent ~unsafe lines
 
-and try_ol lines =
-  gen_try_xl (fun x -> Ol x) is_ol_indent_start remove_ol_indent lines
+and try_ol ~unsafe lines =
+  gen_try_xl (fun x -> Ol x) is_ol_indent_start remove_ol_indent ~unsafe lines
 
 and try_quote =
   let is_quote_indent line = String.is_prefix line ~prefix:"> " in
@@ -484,29 +535,32 @@ and try_quote =
     in
     List.map remove_indent lines
   in
-  fun lines ->
+  fun ~unsafe lines ->
     match lines with
     | line :: lines' when is_quote_indent line -> (
         match List.split_by_first lines' ~f:is_empty_line with
-        | None -> Some (Quote (remove_indent lines |> trans_from_lines), [])
+        | None ->
+            Some (Quote (remove_indent lines |> trans_from_lines ~unsafe), [])
         | Some (quote, _, lines) ->
             Some
-              (Quote (remove_indent (line :: quote) |> trans_from_lines), lines)
-        )
+              ( Quote (remove_indent (line :: quote) |> trans_from_lines ~unsafe),
+                lines ) )
     | _ -> None
 
-and trans_from_lines lines =
+and trans_from_lines ~unsafe lines =
   let rec trans lines rev =
     match List.remove_head lines ~f:is_empty_line with
     | [] -> List.rev rev
     | lines ->
         let ( >>= ) = gen_bind lines in
-        None >>= try_hr >>= try_code_block >>= try_header >>= try_quote
-        >>= try_ul >>= try_ol >>= try_p |> Option.value_exn
+        None >>= try_hr >>= try_unsafe_img ~unsafe >>= try_code_block
+        >>= try_header >>= try_quote ~unsafe >>= try_ul ~unsafe
+        >>= try_ol ~unsafe >>= try_p |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
 
-let trans s = String.split_to_lines s |> trans_from_lines
+let trans ?(unsafe = false) s =
+  String.split_to_lines s |> trans_from_lines ~unsafe
 
 let trans_to_string s = trans s |> F.asprintf "%a" pp
