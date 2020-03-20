@@ -591,4 +591,4 @@ and trans_from_lines ~unsafe lines =
 let trans ?(unsafe = false) s =
   String.split_to_lines s |> trans_from_lines ~unsafe
 
-let trans_to_string s = trans s |> F.asprintf "%a" pp
+let trans_to_string ?unsafe s = trans ?unsafe s |> F.asprintf "%a" pp

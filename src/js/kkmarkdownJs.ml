@@ -6,4 +6,8 @@ let () =
     (object%js
        val trans =
          fun s -> Js.string (Kkmarkdown.trans_to_string (Js.to_string s))
+
+       val unsafe_trans =
+         fun s ->
+           Js.string (Kkmarkdown.trans_to_string ~unsafe:true (Js.to_string s))
     end)
