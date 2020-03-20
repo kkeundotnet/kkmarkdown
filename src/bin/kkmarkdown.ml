@@ -18,12 +18,31 @@ let get_input_from_file file =
   close_in_noerr ch;
   input
 
+let unsafe = ref false
+
+let input_files_rev = ref []
+
+let speclist = [ ("--unsafe", Arg.Set unsafe, "Enable unsafe mode") ]
+
 let main () =
+  let input_files = List.rev !input_files_rev in
   let input =
-    if Array.length Sys.argv >= 2 then get_input_from_file Sys.argv.(1)
-    else get_input_from_stdin ()
+    match input_files with
+    | [] -> get_input_from_stdin ()
+    | [ file ] -> get_input_from_file file
+    | _ -> invalid_arg "Multiple files are given."
   in
-  Kkmarkdown.trans input |> Kkmarkdown.pp F.std_formatter;
+  Kkmarkdown.trans ~unsafe:!unsafe input |> Kkmarkdown.pp F.std_formatter;
   F.print_flush ()
 
-let () = main ()
+let parse_arg () =
+  Arg.parse speclist
+    (fun file -> input_files_rev := file :: !input_files_rev)
+    {|Usage: kkmarkdown [OPTION]... [FILE]
+If FILE is not given, it reads input from stdin.  Visit https://github.com/kkeundotnet/kkmarkdown
+for more information.
+|}
+
+let () =
+  parse_arg ();
+  main ()

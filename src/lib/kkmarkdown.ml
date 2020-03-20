@@ -391,9 +391,8 @@ end = struct
   let read_classes s =
     String.split_on_char ' ' s
     |> List.filter_map (fun class_ ->
-           if String.length class_ >= 2 && Char.equal class_.[0] '.' then (
-             prerr_endline class_;
-             Some (String.sub_from class_ 1) )
+           if String.length class_ >= 2 && Char.equal class_.[0] '.' then
+             Some (String.sub_from class_ 1)
            else None)
 
   (* ![ link ] { classes } *)
