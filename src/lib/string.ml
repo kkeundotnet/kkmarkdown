@@ -13,7 +13,16 @@ let forall s ~f = forall_from 0 s ~f
 
 let is_sub cur line ~sub =
   cur + length sub <= length line
-  && foralli sub ~f:(fun i c -> get line (cur + i) = c)
+  && foralli sub ~f:(fun i c -> Char.equal (get line (cur + i)) c)
+
+let rec index_sub_from_opt cur line ~sub =
+  if cur + length sub <= length line then
+    if foralli sub ~f:(fun i c -> Char.equal (get line (cur + i)) c) then
+      Some cur
+    else index_sub_from_opt (cur + 1) line ~sub
+  else None
+
+let index_sub_opt line ~sub = index_sub_from_opt 0 line ~sub
 
 let is_prefix line ~prefix = is_sub 0 line ~sub:prefix
 

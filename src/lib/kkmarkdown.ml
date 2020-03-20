@@ -27,6 +27,7 @@ type block =
   | Ol of li list
   | CodeBlock of string list
   | Hr
+  | UnsafeCodeBlock of { cb : string list; classes : string list }
   | UnsafeImg of { link : string; classes : string list }
 
 and li = Li of span list | LiP of block list
@@ -53,12 +54,20 @@ let pp_char =
 
 let pp_chars f s = String.iter (pp_char f) s
 
-let pp_open f tag = F.fprintf f "<%s>" tag
+let pp_classes f classes =
+  List.pp ~pp_sep:(fun f -> F.pp_print_char f ' ') F.pp_print_string f classes
+
+let pp_open ?classes f tag =
+  match classes with
+  | None -> F.fprintf f {|<%s>|} tag
+  | Some classes -> F.fprintf f {|<%s class="%a">|} tag pp_classes classes
 
 let pp_close f tag = F.fprintf f "</%s>" tag
 
-let pp_wrap tag pp f x =
-  pp_open f tag;
+let pp_wrap tag ?classes pp f x =
+  ( match classes with
+  | None -> pp_open f tag
+  | Some classes -> pp_open ~classes f tag );
   pp f x;
   pp_close f tag
 
@@ -98,12 +107,9 @@ let rec pp_block f = function
   | Quote quote -> pp_wrap "blockquote" pp f quote
   | Ol lis -> pp_wrap "ol" (pp_list_with_line pp_li) f lis
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
+  | UnsafeCodeBlock { cb; classes } ->
+      pp_wrap "pre" ~classes (pp_wrap "code" (pp_list_with_line pp_chars)) f cb
   | UnsafeImg { link; classes } ->
-      let pp_classes f classes =
-        List.pp
-          ~pp_sep:(fun f -> F.pp_print_char f ' ')
-          F.pp_print_string f classes
-      in
       let pp_img f () =
         F.fprintf f {|<img src="%s" class="%a">|} link pp_classes classes
       in
@@ -366,6 +372,66 @@ let remove_ol_indent line =
   else if String.is_prefix line ~prefix:" " then String.sub_from line 1
   else line
 
+module Unsafe : sig
+  type unsafe_f
+
+  val try_ :
+    unsafe:bool -> unsafe_f -> string list -> (block * string list) option
+
+  val img : unsafe_f
+
+  val code_block : unsafe_f
+end = struct
+  let ( let+ ) x f = Option.map f x
+
+  type unsafe_f = string list -> (block * string list) option
+
+  let try_ ~unsafe f lines = if unsafe then f lines else None
+
+  let read_classes s =
+    String.split_on_char ' ' s
+    |> List.filter_map (fun class_ ->
+           if String.length class_ >= 2 && Char.equal class_.[0] '.' then (
+             prerr_endline class_;
+             Some (String.sub_from class_ 1) )
+           else None)
+
+  (* ![ link ] { classes } *)
+  let img = function
+    | line :: lines
+      when String.length line >= 7
+           && Char.equal line.[0] '!'
+           && Char.equal line.[1] '['
+           && Char.equal line.[String.length line - 1] '}' ->
+        let+ cur = String.index_sub_opt line ~sub:"] {" in
+        let link = String.sub line 2 (cur - 2) |> String.trim in
+        let cur = cur + 3 in
+        let classes =
+          String.sub line cur (String.length line - cur - 1) |> read_classes
+        in
+        (UnsafeImg { link; classes }, lines)
+    | _ -> None
+
+  (* ``` { classes } *)
+  let code_block = function
+    | line :: lines
+      when String.length line >= 6
+           && Char.equal line.[0] '`'
+           && Char.equal line.[1] '`'
+           && Char.equal line.[2] '`'
+           && Char.equal line.[String.length line - 1] '}' -> (
+        let+ cur = String.index_sub_opt line ~sub:"` {" in
+        let code_block_bound = String.sub line 0 (cur + 1) in
+        let cur = cur + 3 in
+        let classes =
+          String.sub line cur (String.length line - cur - 1) |> read_classes
+        in
+        match List.split_by_first lines ~f:(String.equal code_block_bound) with
+        | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
+        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
+    | _ -> None
+end
+
 let try_hr =
   let is_hr line =
     String.length line >= 3 && String.forall line ~f:(Char.equal '*')
@@ -445,46 +511,6 @@ let try_p lines =
   in
   Some (P (trans_spans p), lines)
 
-let try_unsafe try_f ~unsafe lines = if unsafe then try_f lines else None
-
-(* ![ link ] { classes } *)
-let try_unsafe_img =
-  let read_until cur line c =
-    String.index_from_opt line cur c
-    |> Option.map (fun cur' -> (cur' + 1, String.sub line cur (cur' - cur)))
-  in
-  let rec read_spaces cur line =
-    if cur < String.length line && Char.equal line.[cur] ' ' then
-      read_spaces (cur + 1) line
-    else cur
-  in
-  let read_classes classes =
-    String.split_on_char ' ' classes
-    |> List.filter_map (fun class_ ->
-           if String.length class_ >= 2 && Char.equal class_.[0] '.' then (
-             prerr_endline class_;
-             Some (String.sub_from class_ 1) )
-           else None)
-  in
-  let check b = if b then Some () else None in
-  try_unsafe @@ function
-  | [] -> None
-  | line :: lines ->
-      let ( let* ) = Option.bind in
-      let* () =
-        check
-          ( 1 < String.length line
-          && Char.equal line.[0] '!'
-          && Char.equal line.[1] '[' )
-      in
-      let* cur, link = read_until 2 line ']' in
-      let cur = read_spaces cur line in
-      let* () = check (cur < String.length line && Char.equal line.[cur] '{') in
-      let* _cur, classes = read_until (cur + 1) line '}' in
-      let link = String.trim link in
-      let classes = read_classes classes in
-      Some (UnsafeImg { link; classes }, lines)
-
 let rec gen_try_xl constructor is_indent_start remove_indent =
   let trans_xl_elems ~unsafe lines =
     let groups =
@@ -553,9 +579,11 @@ and trans_from_lines ~unsafe lines =
     | [] -> List.rev rev
     | lines ->
         let ( >>= ) = gen_bind lines in
-        None >>= try_hr >>= try_unsafe_img ~unsafe >>= try_code_block
-        >>= try_header >>= try_quote ~unsafe >>= try_ul ~unsafe
-        >>= try_ol ~unsafe >>= try_p |> Option.value_exn
+        None
+        >>= Unsafe.(try_ ~unsafe img)
+        >>= Unsafe.(try_ ~unsafe code_block)
+        >>= try_hr >>= try_code_block >>= try_header >>= try_quote ~unsafe
+        >>= try_ul ~unsafe >>= try_ol ~unsafe >>= try_p |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []

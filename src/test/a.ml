@@ -176,15 +176,42 @@ let test_ul () =
 
 * bye|}
 
-let test_no_img () =
-  check "unsafe img" {|<p>![link]  {  .c1  .c2  }</p>|}
-    {|![link]  {  .c1  .c2  }|}
+let test_no_unsafe_img () =
+  check "no unsafe img" {|<p>![  link  ] {  .c1  .c2  }</p>|}
+    {|![  link  ] {  .c1  .c2  }|}
 
 let test_unsafe_img () =
   unsafe_check "unsafe img" {|<p><img src="link" class="c1 c2"></p>|}
-    {|![link]  {  .c1  .c2  }|};
+    {|![  link  ] {  .c1  .c2  }|};
   unsafe_check "unsafe img" {|<p><img src="link" class=""></p>|}
-    {|![link]  {   }|}
+    {|![  link  ] {   }|}
+
+let test_no_unsafe_code_block () =
+  check "no unsafe code block"
+    {|<p><code></code><code> {.c1 .c2}
+code
+</code><code></code></p>|}
+    {|``` {.c1 .c2}
+code
+```|};
+  check "no unsafe code block"
+    {|<p><code></code><code> {  .c1 .c2  }
+code
+</code><code></code></p>|}
+    {|``` {  .c1 .c2  }
+code
+```|}
+
+let test_unsafe_code_block () =
+  unsafe_check "unsafe code block"
+    {|<pre class="c1 c2"><code>code</code></pre>|} {|``` {.c1 .c2}
+code
+```|};
+  unsafe_check "unsafe code block"
+    {|<pre class="c1 c2"><code>code</code></pre>|}
+    {|``` {  .c1 .c2  }
+code
+```|}
 
 let tests =
   [
@@ -198,12 +225,14 @@ let tests =
     ("escape", `Quick, test_escape);
     ("header", `Quick, test_header);
     ("hr", `Quick, test_hr);
-    ("no_img", `Quick, test_no_img);
+    ("no_unsafe_code_block", `Quick, test_no_unsafe_code_block);
+    ("no_unsafe_img", `Quick, test_no_unsafe_img);
     ("ol", `Quick, test_ol);
     ("p", `Quick, test_p);
     ("quote", `Quick, test_quote);
     ("strong", `Quick, test_strong);
     ("ul", `Quick, test_ul);
     ("unicode", `Quick, test_unicode);
+    ("unsafe_code_block", `Quick, test_unsafe_code_block);
     ("unsafe_img", `Quick, test_unsafe_img);
   ]
