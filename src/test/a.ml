@@ -241,6 +241,43 @@ contents
 contents
 </div>|}
 
+let test_no_unsafe_a () =
+  check "no unsafe a" {|<p>[a](b)</p>|} {|[a](b)|};
+  check "no unsafe a" {|<p>Hello [a](b).</p>|} {|Hello [a](b).|}
+
+let test_unsafe_a () =
+  unsafe_check "unsafe a" {|<p><a href="b">a</a></p>|} {|[a](b)|};
+  unsafe_check "unsafe a" {|<p>Hello <a href="b">a</a>.</p>|} {|Hello [a](b).|}
+
+let test_no_unsafe_script () =
+  check "no unsafe script" {|<p>&lt;script&gt;
+contents
+&lt;/script&gt;</p>|}
+    {|<script>
+contents
+</script>|};
+  check "no unsafe script"
+    {|<p>&lt;script class=&quot;a&quot;&gt;
+contents
+&lt;/script&gt;</p>|}
+    {|<script class="a">
+contents
+</script>|}
+
+let test_unsafe_script () =
+  unsafe_check "unsafe script" {|<script>
+contents
+</script>|}
+    {|<script>
+contents
+</script>|};
+  unsafe_check "unsafe script" {|<script class="a">
+contents
+</script>|}
+    {|<script class="a">
+contents
+</script>|}
+
 let tests =
   [
     ("a", `Quick, test_a);
@@ -253,16 +290,20 @@ let tests =
     ("escape", `Quick, test_escape);
     ("header", `Quick, test_header);
     ("hr", `Quick, test_hr);
+    ("no_unsafe_a", `Quick, test_no_unsafe_a);
     ("no_unsafe_code_block", `Quick, test_no_unsafe_code_block);
     ("no_unsafe_div", `Quick, test_no_unsafe_div);
     ("no_unsafe_img", `Quick, test_no_unsafe_img);
+    ("no_unsafe_script", `Quick, test_no_unsafe_script);
     ("ol", `Quick, test_ol);
     ("p", `Quick, test_p);
     ("quote", `Quick, test_quote);
     ("strong", `Quick, test_strong);
     ("ul", `Quick, test_ul);
     ("unicode", `Quick, test_unicode);
+    ("unsafe_a", `Quick, test_unsafe_a);
     ("unsafe_code_block", `Quick, test_unsafe_code_block);
     ("unsafe_div", `Quick, test_unsafe_div);
     ("unsafe_img", `Quick, test_unsafe_img);
+    ("unsafe_script", `Quick, test_unsafe_script);
   ]

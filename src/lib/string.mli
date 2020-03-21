@@ -12,4 +12,6 @@ val sub_from : string -> int -> string
 
 val index_sub_opt : string -> sub:string -> int option
 
+val index_sub_from_opt : int -> string -> sub:string -> int option
+
 val split_to_lines : string -> string list

@@ -13,6 +13,7 @@ type span =
   | EmStrongClose
   | CodeSpan of string list
   | A of string
+  | UnsafeA of { spans : span list; link : string }
 
 type block =
   | P of span list
@@ -28,8 +29,8 @@ type block =
   | CodeBlock of string list
   | Hr
   | UnsafeCodeBlock of { cb : string list; classes : string list }
-  | UnsafeDiv of string list
   | UnsafeImg of { alt : string; link : string; classes : string list }
+  | UnsafeInlineHtml of string list
 
 and li = Li of span list | LiP of block list
 
@@ -74,7 +75,7 @@ let pp_wrap tag ?classes pp f x =
 
 let pp_list_with_line f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') f
 
-let pp_span f = function
+let rec pp_span f = function
   | NoneSpan -> ()
   | CharSpan c -> pp_char f c
   | UnicodeSpan s -> F.pp_print_string f s
@@ -91,8 +92,10 @@ let pp_span f = function
       pp_close f "em"
   | CodeSpan code -> pp_wrap "code" (pp_list_with_line pp_chars) f code
   | A s -> F.fprintf f {|<a href="%s">%a</a>|} s pp_chars s
+  | UnsafeA { spans; link } ->
+      F.fprintf f {|<a href="%s">%a</a>|} link pp_span_list spans
 
-let pp_span_list = List.pp pp_span
+and pp_span_list f = List.pp pp_span f
 
 let rec pp_block f = function
   | P sps -> pp_wrap "p" pp_span_list f sps
@@ -110,8 +113,10 @@ let rec pp_block f = function
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
   | UnsafeCodeBlock { cb; classes } ->
       pp_wrap "pre" ~classes (pp_wrap "code" (pp_list_with_line pp_chars)) f cb
-  | UnsafeDiv div ->
-      List.pp ~pp_sep:(fun f -> F.pp_print_newline f ()) F.pp_print_string f div
+  | UnsafeInlineHtml lines ->
+      List.pp
+        ~pp_sep:(fun f -> F.pp_print_newline f ())
+        F.pp_print_string f lines
   | UnsafeImg { alt; link; classes } ->
       let pp_img f () =
         F.fprintf f {|<img alt="%s" src="%s" class="%a">|} alt link pp_classes
@@ -129,13 +134,138 @@ and pp f = pp_list_with_line pp_block f
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
-(* Parse spans *)
+(* Continuation status *)
 
 type status = InEm | InStrong | InEmStrong
 
 let status_equal x y = x = y
 
 type spans_cont = { cur : int; status : status list; lines : string list }
+
+(* Parse unsafe spans/blocks *)
+
+module Unsafe : sig
+  type unsafe_f_span
+
+  type unsafe_f_block
+
+  val try_span :
+    unsafe:bool -> unsafe_f_span -> spans_cont -> (span * spans_cont) option
+
+  val try_block :
+    unsafe:bool -> unsafe_f_block -> string list -> (block * string list) option
+
+  val a : trans_spans_of_line:(string -> span list) -> unsafe_f_span
+
+  val img : unsafe_f_block
+
+  val code_block : unsafe_f_block
+
+  val div : unsafe_f_block
+
+  val script : unsafe_f_block
+end = struct
+  let ( let* ) = Option.bind
+
+  let ( let+ ) x f = Option.map f x
+
+  type unsafe_f_span = spans_cont -> (span * spans_cont) option
+
+  type unsafe_f_block = string list -> (block * string list) option
+
+  let try_ ~unsafe f x = if unsafe then f x else None
+
+  let try_span = try_
+
+  let try_block = try_
+
+  let read_classes s =
+    String.split_on_char ' ' s
+    |> List.filter_map (fun class_ ->
+           if String.length class_ >= 2 && Char.equal class_.[0] '.' then
+             Some (String.sub_from class_ 1)
+           else None)
+
+  (* ![alt](link) {.class1 .class2} *)
+  let img = function
+    | line :: lines
+      when String.length line >= 7
+           && Char.equal line.[0] '!'
+           && Char.equal line.[1] '['
+           && Char.equal line.[String.length line - 1] '}' ->
+        let* cur1 = String.index_sub_opt line ~sub:"](" in
+        let* cur2 = String.index_sub_opt line ~sub:") {" in
+        if cur1 < cur2 then
+          let alt = String.sub line 2 (cur1 - 2) |> String.trim in
+          let link =
+            String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) |> String.trim
+          in
+          let cur = cur2 + 3 in
+          let classes =
+            String.sub line cur (String.length line - cur - 1) |> read_classes
+          in
+          Some (UnsafeImg { alt; link; classes }, lines)
+        else None
+    | _ -> None
+
+  (* ``` {.class1 .class2} *)
+  let code_block = function
+    | line :: lines
+      when String.length line >= 6
+           && Char.equal line.[0] '`'
+           && Char.equal line.[1] '`'
+           && Char.equal line.[2] '`'
+           && Char.equal line.[String.length line - 1] '}' -> (
+        let+ cur = String.index_sub_opt line ~sub:"` {" in
+        let code_block_bound = String.sub line 0 (cur + 1) in
+        let cur = cur + 3 in
+        let classes =
+          String.sub line cur (String.length line - cur - 1) |> read_classes
+        in
+        match List.split_by_first lines ~f:(String.equal code_block_bound) with
+        | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
+        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
+    | _ -> None
+
+  let gen_inline_html ~tag = function
+    | line :: lines as all
+      when String.is_prefix line ~prefix:("<" ^ tag)
+           && 1 + String.length tag < String.length line
+           && ( Char.equal line.[1 + String.length tag] ' '
+              || Char.equal line.[1 + String.length tag] '>' ) ->
+        Some
+          ( match
+              List.split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">"))
+            with
+          | None -> (UnsafeInlineHtml all, [])
+          | Some (div_body, div_close, lines) ->
+              ( UnsafeInlineHtml
+                  (line :: List.append_tailrec div_body [ div_close ]),
+                lines ) )
+    | _ -> None
+
+  (* <div> *)
+  let div = gen_inline_html ~tag:"div"
+
+  (* <script> *)
+  let script = gen_inline_html ~tag:"script"
+
+  (* [text](link) *)
+  let a ~trans_spans_of_line { cur; status; lines } =
+    match lines with
+    | line :: _ when cur + 3 < String.length line && Char.equal line.[cur] '['
+      ->
+        let* cur1 = String.index_sub_from_opt (cur + 1) line ~sub:"](" in
+        let* cur2 = String.index_from_opt line (cur1 + 2) ')' in
+        let text = String.sub line (cur + 1) (cur1 - (cur + 1)) in
+        let link = String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) in
+        Some
+          ( UnsafeA { spans = trans_spans_of_line text; link },
+            { cur = cur2 + 1; status; lines } )
+    | _ -> None
+end
+
+(* Parse spans *)
 
 let try_escape_char =
   let escape_chars =
@@ -305,7 +435,7 @@ let try_a =
         | None -> None )
     | _ -> None
 
-let trans_spans =
+let rec trans_spans ~unsafe =
   let rec close_status rev = function
     | [] -> rev
     | InEm :: status -> close_status (EmClose :: rev) status
@@ -317,14 +447,18 @@ let trans_spans =
     | [] -> close_status rev status |> List.rev
     | _ :: _ ->
         let ( >>= ) = gen_bind cont in
-        None >>= try_escape_char >>= try_unicode >>= try_em_strong
-        >>= try_strong >>= try_em >>= try_code >>= try_br >>= try_a
-        >>= try_char_span |> Option.value_exn
+        None
+        >>= Unsafe.(
+              try_span ~unsafe
+                (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
+        >>= try_escape_char >>= try_unicode >>= try_em_strong >>= try_strong
+        >>= try_em >>= try_code >>= try_br >>= try_a >>= try_char_span
+        |> Option.value_exn
         |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
   in
   fun lines -> trans { cur = 0; status = []; lines } []
 
-let trans_spans_of_line line = trans_spans [ line ]
+and trans_spans_of_line ~unsafe line = trans_spans ~unsafe [ line ]
 
 (* Parse blocks *)
 
@@ -376,85 +510,6 @@ let remove_ol_indent line =
   else if String.is_prefix line ~prefix:" " then String.sub_from line 1
   else line
 
-module Unsafe : sig
-  type unsafe_f
-
-  val try_ :
-    unsafe:bool -> unsafe_f -> string list -> (block * string list) option
-
-  val img : unsafe_f
-
-  val code_block : unsafe_f
-
-  val div : unsafe_f
-end = struct
-  let ( let* ) = Option.bind
-
-  let ( let+ ) x f = Option.map f x
-
-  type unsafe_f = string list -> (block * string list) option
-
-  let try_ ~unsafe f lines = if unsafe then f lines else None
-
-  let read_classes s =
-    String.split_on_char ' ' s
-    |> List.filter_map (fun class_ ->
-           if String.length class_ >= 2 && Char.equal class_.[0] '.' then
-             Some (String.sub_from class_ 1)
-           else None)
-
-  (* ![alt](link) {.class1 .class2} *)
-  let img = function
-    | line :: lines
-      when String.length line >= 7
-           && Char.equal line.[0] '!'
-           && Char.equal line.[1] '['
-           && Char.equal line.[String.length line - 1] '}' ->
-        let* cur1 = String.index_sub_opt line ~sub:"](" in
-        let* cur2 = String.index_sub_opt line ~sub:") {" in
-        if cur1 < cur2 then
-          let alt = String.sub line 2 (cur1 - 2) |> String.trim in
-          let link =
-            String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) |> String.trim
-          in
-          let cur = cur2 + 3 in
-          let classes =
-            String.sub line cur (String.length line - cur - 1) |> read_classes
-          in
-          Some (UnsafeImg { alt; link; classes }, lines)
-        else None
-    | _ -> None
-
-  (* ``` {.class1 .class2} *)
-  let code_block = function
-    | line :: lines
-      when String.length line >= 6
-           && Char.equal line.[0] '`'
-           && Char.equal line.[1] '`'
-           && Char.equal line.[2] '`'
-           && Char.equal line.[String.length line - 1] '}' -> (
-        let+ cur = String.index_sub_opt line ~sub:"` {" in
-        let code_block_bound = String.sub line 0 (cur + 1) in
-        let cur = cur + 3 in
-        let classes =
-          String.sub line cur (String.length line - cur - 1) |> read_classes
-        in
-        match List.split_by_first lines ~f:(String.equal code_block_bound) with
-        | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
-        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
-    | _ -> None
-
-  let div = function
-    | line :: lines as all when String.is_prefix line ~prefix:"<div" ->
-        Some
-          ( match List.split_by_first lines ~f:(String.equal "</div>") with
-          | None -> (UnsafeDiv all, [])
-          | Some (div_body, div_close, lines) ->
-              ( UnsafeDiv (line :: List.append_tailrec div_body [ div_close ]),
-                lines ) )
-    | _ -> None
-end
-
 let try_hr =
   let is_hr line =
     String.length line >= 3 && String.forall line ~f:(Char.equal '*')
@@ -462,38 +517,39 @@ let try_hr =
   function line :: lines when is_hr line -> Some (Hr, lines) | _ -> None
 
 let try_header_by_sharp =
-  let try_header_line line =
+  let try_header_line ~unsafe line =
     if String.is_prefix line ~prefix:"# " then
-      Some (H1 (trans_spans_of_line (String.sub_from line 2)))
+      Some (H1 (trans_spans_of_line ~unsafe (String.sub_from line 2)))
     else if String.is_prefix line ~prefix:"## " then
-      Some (H2 (trans_spans_of_line (String.sub_from line 3)))
+      Some (H2 (trans_spans_of_line ~unsafe (String.sub_from line 3)))
     else if String.is_prefix line ~prefix:"### " then
-      Some (H3 (trans_spans_of_line (String.sub_from line 4)))
+      Some (H3 (trans_spans_of_line ~unsafe (String.sub_from line 4)))
     else if String.is_prefix line ~prefix:"#### " then
-      Some (H4 (trans_spans_of_line (String.sub_from line 5)))
+      Some (H4 (trans_spans_of_line ~unsafe (String.sub_from line 5)))
     else if String.is_prefix line ~prefix:"##### " then
-      Some (H5 (trans_spans_of_line (String.sub_from line 6)))
+      Some (H5 (trans_spans_of_line ~unsafe (String.sub_from line 6)))
     else if String.is_prefix line ~prefix:"###### " then
-      Some (H6 (trans_spans_of_line (String.sub_from line 7)))
+      Some (H6 (trans_spans_of_line ~unsafe (String.sub_from line 7)))
     else None
   in
-  function
-  | line :: lines ->
-      try_header_line line |> Option.map (fun header -> (header, lines))
-  | [] -> None
+  fun ~unsafe -> function
+    | line :: lines ->
+        try_header_line ~unsafe line
+        |> Option.map (fun header -> (header, lines))
+    | [] -> None
 
-let try_header_by_dash = function
+let try_header_by_dash ~unsafe = function
   | line1 :: line2 :: lines
     when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '=') ->
-      Some (H1 (trans_spans_of_line line1), lines)
+      Some (H1 (trans_spans_of_line ~unsafe line1), lines)
   | line1 :: line2 :: lines
     when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '-') ->
-      Some (H2 (trans_spans_of_line line1), lines)
+      Some (H2 (trans_spans_of_line ~unsafe line1), lines)
   | _ -> None
 
-let try_header lines =
+let try_header ~unsafe lines =
   let ( >>= ) = gen_bind lines in
-  None >>= try_header_by_sharp >>= try_header_by_dash
+  None >>= try_header_by_sharp ~unsafe >>= try_header_by_dash ~unsafe
 
 let try_code_block_by_bound =
   let is_code_block_bound line =
@@ -526,13 +582,13 @@ let try_code_block lines =
   let ( >>= ) = gen_bind lines in
   None >>= try_code_block_by_bound >>= try_code_block_by_indent
 
-let try_p lines =
+let try_p ~unsafe lines =
   let p, lines =
     match List.split_by_first lines ~f:is_empty_line with
     | None -> (lines, [])
     | Some (p, _, lines) -> (p, lines)
   in
-  Some (P (trans_spans p), lines)
+  Some (P (trans_spans ~unsafe p), lines)
 
 let rec gen_try_xl constructor is_indent_start remove_indent =
   let trans_xl_elems ~unsafe lines =
@@ -542,7 +598,7 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     let trans_elem =
       if List.exists (List.exists is_empty_line) groups then fun lines ->
         LiP (trans_from_lines ~unsafe lines)
-      else fun lines -> Li (trans_spans lines)
+      else fun lines -> Li (trans_spans ~unsafe lines)
     in
     List.map (fun group -> List.map remove_indent group |> trans_elem) groups
   in
@@ -603,11 +659,13 @@ and trans_from_lines ~unsafe lines =
     | lines ->
         let ( >>= ) = gen_bind lines in
         None
-        >>= Unsafe.(try_ ~unsafe img)
-        >>= Unsafe.(try_ ~unsafe code_block)
-        >>= Unsafe.(try_ ~unsafe div)
-        >>= try_hr >>= try_code_block >>= try_header >>= try_quote ~unsafe
-        >>= try_ul ~unsafe >>= try_ol ~unsafe >>= try_p |> Option.value_exn
+        >>= Unsafe.(try_block ~unsafe img)
+        >>= Unsafe.(try_block ~unsafe code_block)
+        >>= Unsafe.(try_block ~unsafe div)
+        >>= Unsafe.(try_block ~unsafe script)
+        >>= try_hr >>= try_code_block >>= try_header ~unsafe
+        >>= try_quote ~unsafe >>= try_ul ~unsafe >>= try_ol ~unsafe
+        >>= try_p ~unsafe |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
