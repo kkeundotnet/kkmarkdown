@@ -72,7 +72,7 @@ paragraph1
 paragraph2
 ```
 
-## Headers
+## Header
 
 ```
 # H1
@@ -176,15 +176,16 @@ abc
 
 ## What is not supported
 
-Basically, the following features are not supported.
+Basically, the following syntax are not supported.
 
 * Inline HTML
-* Images
+* Image
+* Link (general one `[...](...)`)
 
 BUT, there is *unsafe mode* that can be used when the markdown
 source is trustworthy.
 
-### Image + class
+### Image + class (unsafe mode only)
 
 ```
 ![text](link) {.c1 .c2}
@@ -196,7 +197,7 @@ is translated to
 <img alt="text" src="link" class="c1 c2">
 ```
 
-### Code block + class
+### Code block + class (unsafe mode only)
 
 ~~~
 ``` {.class1 .class2}

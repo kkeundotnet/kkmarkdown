@@ -9,7 +9,7 @@ Small & safe markdown engine
 Supported syntax are listed here:  
 <https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
 
-How to build
+Build & run
 ---
 
 ```
@@ -49,8 +49,7 @@ In html:
 ### Unsafe mode
 
 There is *unsafe mode* that can be used when the markdown source is
-trustworthy.  See the syntax document for supported syntax in the
-unsafe mode:  
+trustworthy.  See below for supported syntax in the unsafe mode:  
 <https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
 
 In shell:
@@ -65,7 +64,7 @@ In html:
 <script>result = kkmarkdown.unsafe("*abc*");</script>
 ```
 
-Installation
+Install
 ---
 
 ```
