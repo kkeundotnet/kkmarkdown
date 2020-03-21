@@ -28,6 +28,7 @@ type block =
   | CodeBlock of string list
   | Hr
   | UnsafeCodeBlock of { cb : string list; classes : string list }
+  | UnsafeDiv of string list
   | UnsafeImg of { alt : string; link : string; classes : string list }
 
 and li = Li of span list | LiP of block list
@@ -109,6 +110,8 @@ let rec pp_block f = function
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
   | UnsafeCodeBlock { cb; classes } ->
       pp_wrap "pre" ~classes (pp_wrap "code" (pp_list_with_line pp_chars)) f cb
+  | UnsafeDiv div ->
+      List.pp ~pp_sep:(fun f -> F.pp_print_newline f ()) F.pp_print_string f div
   | UnsafeImg { alt; link; classes } ->
       let pp_img f () =
         F.fprintf f {|<img alt="%s" src="%s" class="%a">|} alt link pp_classes
@@ -382,6 +385,8 @@ module Unsafe : sig
   val img : unsafe_f
 
   val code_block : unsafe_f
+
+  val div : unsafe_f
 end = struct
   let ( let* ) = Option.bind
 
@@ -437,6 +442,16 @@ end = struct
         match List.split_by_first lines ~f:(String.equal code_block_bound) with
         | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
         | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
+    | _ -> None
+
+  let div = function
+    | line :: lines as all when String.is_prefix line ~prefix:"<div" ->
+        Some
+          ( match List.split_by_first lines ~f:(String.equal "</div>") with
+          | None -> (UnsafeDiv all, [])
+          | Some (div_body, div_close, lines) ->
+              ( UnsafeDiv (line :: List.append_tailrec div_body [ div_close ]),
+                lines ) )
     | _ -> None
 end
 
@@ -590,6 +605,7 @@ and trans_from_lines ~unsafe lines =
         None
         >>= Unsafe.(try_ ~unsafe img)
         >>= Unsafe.(try_ ~unsafe code_block)
+        >>= Unsafe.(try_ ~unsafe div)
         >>= try_hr >>= try_code_block >>= try_header >>= try_quote ~unsafe
         >>= try_ul ~unsafe >>= try_ol ~unsafe >>= try_p |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)

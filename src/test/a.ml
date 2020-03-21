@@ -213,6 +213,34 @@ code
 code
 ```|}
 
+let test_no_unsafe_div () =
+  check "no unsafe div" {|<p>&lt;div&gt;
+contents
+&lt;/div&gt;</p>|}
+    {|<div>
+contents
+</div>|};
+  check "no unsafe div"
+    {|<p>&lt;div class=&quot;a&quot;&gt;
+contents
+&lt;/div&gt;</p>|}
+    {|<div class="a">
+contents
+</div>|}
+
+let test_unsafe_div () =
+  unsafe_check "unsafe div" {|<div>
+contents
+</div>|} {|<div>
+contents
+</div>|};
+  unsafe_check "unsafe div" {|<div class="a">
+contents
+</div>|}
+    {|<div class="a">
+contents
+</div>|}
+
 let tests =
   [
     ("a", `Quick, test_a);
@@ -226,6 +254,7 @@ let tests =
     ("header", `Quick, test_header);
     ("hr", `Quick, test_hr);
     ("no_unsafe_code_block", `Quick, test_no_unsafe_code_block);
+    ("no_unsafe_div", `Quick, test_no_unsafe_div);
     ("no_unsafe_img", `Quick, test_no_unsafe_img);
     ("ol", `Quick, test_ol);
     ("p", `Quick, test_p);
@@ -234,5 +263,6 @@ let tests =
     ("ul", `Quick, test_ul);
     ("unicode", `Quick, test_unicode);
     ("unsafe_code_block", `Quick, test_unsafe_code_block);
+    ("unsafe_div", `Quick, test_unsafe_div);
     ("unsafe_img", `Quick, test_unsafe_img);
   ]
