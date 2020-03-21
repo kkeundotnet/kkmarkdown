@@ -48,7 +48,7 @@ will NOT be translated to as we can imagine, i.e.,
 `code`
 ```
 
-## Link
+## Automatic link
 
 Only the next form of link syntax, so called "automatic links", is supported.
 
@@ -211,7 +211,7 @@ is translated to
 <pre class="class1 class2"><code>x=1</code></pre>
 ```
 
-### Some of inline HTMLs
+### Some of inline HTMLs (unsafe mode only)
 
 ```
 <div>
@@ -222,7 +222,7 @@ is translated to
 * `<div>` (or `<div ...`) and `</div>` must be prefixes of the line.
 * Supported tags: `div`, `script`
 
-### Link
+### Link (unsafe mode only)
 
 ```
 [text](link)
