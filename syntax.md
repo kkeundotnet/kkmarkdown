@@ -211,4 +211,24 @@ is translated to
 <pre class="class1 class2"><code>x=1</code></pre>
 ```
 
+### Some of inline HTMLs
+
+```
+<div>
+...
+</div>
+```
+
+* `<div>` (or `<div ...`) and `</div>` must be prefixes of the line.
+* Supported tags: `div`, `script`
+
+### Link
+
+```
+[text](link)
+```
+
+* The link phrase must be in the same one line.
+* `text` is addressed as markdown.
+
 That's it.  Enjoy Kkmarkdown!
