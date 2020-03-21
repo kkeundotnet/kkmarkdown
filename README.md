@@ -6,7 +6,7 @@ Small & safe markdown engine
 * Only a subset of markdown syntax is supported.
 * Legit HTML code generation & no XSS attack is the goal.
 
-Supported syntax are listed here:
+Supported syntax are listed here:  
 <https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
 
 How to build
@@ -44,6 +44,25 @@ In html:
 ```
 <script src='https://kkeun.net/kkmarkdown-js.js'></script>
 <script>result = kkmarkdown.trans("*abc*");</script>
+```
+
+### Unsafe mode
+
+There is *unsafe mode* that can be used when the markdown source is
+trustworthy.  See the syntax document for supported syntax in the
+unsafe mode:  
+<https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
+
+In shell:
+
+```
+$ kkmarkdown --unsafe [FILE]
+```
+
+In html:
+
+```
+<script>result = kkmarkdown.unsafe("*abc*");</script>
 ```
 
 Installation

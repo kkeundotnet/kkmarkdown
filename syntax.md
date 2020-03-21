@@ -176,7 +176,38 @@ abc
 
 ## What is not supported
 
+Basically, the following features are not supported.
+
 * Inline HTML
 * Images
+
+BUT, there is *unsafe mode* that can be used when the markdown
+source is trustworthy.
+
+### Image + class
+
+```
+![text](link) {.c1 .c2}
+```
+
+is translated to
+
+```
+<img alt="text" src="link" class="c1 c2">
+```
+
+### Code block + class
+
+~~~
+``` {.class1 .class2}
+x=1
+```
+~~~
+
+is translated to
+
+```
+<pre class="class1 class2"><code>x=1</code></pre>
+```
 
 That's it.  Enjoy Kkmarkdown!
