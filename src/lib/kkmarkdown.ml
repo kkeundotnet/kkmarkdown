@@ -28,7 +28,7 @@ type block =
   | CodeBlock of string list
   | Hr
   | UnsafeCodeBlock of { cb : string list; classes : string list }
-  | UnsafeImg of { link : string; classes : string list }
+  | UnsafeImg of { alt : string; link : string; classes : string list }
 
 and li = Li of span list | LiP of block list
 
@@ -109,9 +109,10 @@ let rec pp_block f = function
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
   | UnsafeCodeBlock { cb; classes } ->
       pp_wrap "pre" ~classes (pp_wrap "code" (pp_list_with_line pp_chars)) f cb
-  | UnsafeImg { link; classes } ->
+  | UnsafeImg { alt; link; classes } ->
       let pp_img f () =
-        F.fprintf f {|<img src="%s" class="%a">|} link pp_classes classes
+        F.fprintf f {|<img alt="%s" src="%s" class="%a">|} alt link pp_classes
+          classes
       in
       pp_wrap "p" pp_img f ()
 
@@ -382,6 +383,8 @@ module Unsafe : sig
 
   val code_block : unsafe_f
 end = struct
+  let ( let* ) = Option.bind
+
   let ( let+ ) x f = Option.map f x
 
   type unsafe_f = string list -> (block * string list) option
@@ -395,23 +398,29 @@ end = struct
              Some (String.sub_from class_ 1)
            else None)
 
-  (* ![ link ] { classes } *)
+  (* ![alt](link) {.class1 .class2} *)
   let img = function
     | line :: lines
       when String.length line >= 7
            && Char.equal line.[0] '!'
            && Char.equal line.[1] '['
            && Char.equal line.[String.length line - 1] '}' ->
-        let+ cur = String.index_sub_opt line ~sub:"] {" in
-        let link = String.sub line 2 (cur - 2) |> String.trim in
-        let cur = cur + 3 in
-        let classes =
-          String.sub line cur (String.length line - cur - 1) |> read_classes
-        in
-        (UnsafeImg { link; classes }, lines)
+        let* cur1 = String.index_sub_opt line ~sub:"](" in
+        let* cur2 = String.index_sub_opt line ~sub:") {" in
+        if cur1 < cur2 then
+          let alt = String.sub line 2 (cur1 - 2) |> String.trim in
+          let link =
+            String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) |> String.trim
+          in
+          let cur = cur2 + 3 in
+          let classes =
+            String.sub line cur (String.length line - cur - 1) |> read_classes
+          in
+          Some (UnsafeImg { alt; link; classes }, lines)
+        else None
     | _ -> None
 
-  (* ``` { classes } *)
+  (* ``` {.class1 .class2} *)
   let code_block = function
     | line :: lines
       when String.length line >= 6

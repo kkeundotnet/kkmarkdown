@@ -177,14 +177,14 @@ let test_ul () =
 * bye|}
 
 let test_no_unsafe_img () =
-  check "no unsafe img" {|<p>![  link  ] {  .c1  .c2  }</p>|}
-    {|![  link  ] {  .c1  .c2  }|}
+  check "no unsafe img" {|<p>![  alt  ](  link  ) {  .c1  .c2  }</p>|}
+    {|![  alt  ](  link  ) {  .c1  .c2  }|}
 
 let test_unsafe_img () =
-  unsafe_check "unsafe img" {|<p><img src="link" class="c1 c2"></p>|}
-    {|![  link  ] {  .c1  .c2  }|};
-  unsafe_check "unsafe img" {|<p><img src="link" class=""></p>|}
-    {|![  link  ] {   }|}
+  unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class="c1 c2"></p>|}
+    {|![  alt  ](  link  ) {  .c1  .c2  }|};
+  unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
+    {|![  alt  ](  link  ) {   }|}
 
 let test_no_unsafe_code_block () =
   check "no unsafe code block"
