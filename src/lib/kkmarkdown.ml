@@ -38,21 +38,13 @@ and t = block list
 
 (* Pretty print *)
 
-let pp_char =
-  let special_chars =
-    Char.Map.of_list
-      [
-        ('&', "&amp;");
-        ('<', "&lt;");
-        ('>', "&gt;");
-        ('"', "&quot;");
-        ('\'', "&apos;");
-      ]
-  in
-  fun f c ->
-    match Char.Map.find_opt c special_chars with
-    | Some s -> F.pp_print_string f s
-    | None -> F.pp_print_char f c
+let pp_char f = function
+  | '&' -> F.pp_print_string f "&amp;"
+  | '<' -> F.pp_print_string f "&lt;"
+  | '>' -> F.pp_print_string f "&gt;"
+  | '"' -> F.pp_print_string f "&quot;"
+  | '\'' -> F.pp_print_string f "&apos;"
+  | c -> F.pp_print_char f c
 
 let pp_chars f s = String.iter (pp_char f) s
 
@@ -268,32 +260,19 @@ end
 (* Parse spans *)
 
 let try_escape_char =
-  let escape_chars =
-    Char.Set.of_list
-      [
-        '\\';
-        '`';
-        '*';
-        '_';
-        '{';
-        '}';
-        '[';
-        ']';
-        '(';
-        ')';
-        '#';
-        '+';
-        '-';
-        '.';
-        '!';
-      ]
+  let is_escape_char = function
+    | '\\' | '`' | '*' | '_' | '{' | '}' | '[' | ']' | '(' | ')' | '#' | '+'
+    | '-' | '.' | '!' ->
+        true
+    | _ -> false
   in
+
   fun ({ cur; lines; _ } as cont) ->
     match lines with
     | line :: _
       when cur + 1 < String.length line
            && Char.equal line.[cur] '\\'
-           && Char.Set.mem line.[cur + 1] escape_chars ->
+           && is_escape_char line.[cur + 1] ->
         Some (CharSpan line.[cur + 1], { cont with cur = cur + 2 })
     | _ -> None
 
