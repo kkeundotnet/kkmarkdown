@@ -128,6 +128,8 @@ and pp f = pp_list_with_line pp_block f
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
+let gen_compose x f g y = match f x with Some _ as r -> r | None -> g y
+
 (* Continuation status *)
 
 type status = InEm | InStrong | InEmStrong
@@ -440,9 +442,10 @@ let rec trans_spans ~unsafe =
     | [] -> close_status rev status |> List.rev
     | line :: _ ->
         let ( >>= ) = gen_bind cont in
+        let ( >=> ) = gen_compose cont in
         ( if cur < String.length line then
-          None
-          >>=
+          cont
+          |>
           match line.[cur] with
           | '[' ->
               Unsafe.(
@@ -450,7 +453,7 @@ let rec trans_spans ~unsafe =
                   (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
           | '\\' -> try_escape_char
           | '&' -> try_unicode
-          | '*' -> fun _cont -> None >>= try_em_strong >>= try_strong >>= try_em
+          | '*' -> try_em_strong >=> try_strong >=> try_em
           | '`' -> try_code
           | ' ' -> try_br
           | '<' -> try_a
@@ -653,28 +656,25 @@ and trans_from_lines ~unsafe lines =
     | [] -> List.rev rev
     | line :: _ as lines ->
         let ( >>= ) = gen_bind lines in
-        None
-        >>= ( if 0 < String.length line then
-              match line.[0] with
-              | '!' -> Unsafe.(try_block ~unsafe img)
-              | '`' ->
-                  fun _lines ->
-                    None
-                    >>= Unsafe.(try_block ~unsafe code_block)
-                    >>= try_code_block_by_bound
-              | '~' -> try_code_block_by_bound
-              | ' ' -> try_code_block_by_indent
-              | '<' ->
-                  fun _lines ->
-                    None
-                    >>= Unsafe.(try_block ~unsafe div)
-                    >>= Unsafe.(try_block ~unsafe script)
-              | '*' -> fun _lines -> None >>= try_hr >>= try_ul ~unsafe
-              | '#' -> try_header_by_sharp ~unsafe
-              | '>' -> try_quote ~unsafe
-              | c when Char.is_num c -> try_ol ~unsafe
-              | _ -> fun _lines -> None
-            else fun _lines -> None )
+        let ( >=> ) = gen_compose lines in
+        lines
+        |> ( if 0 < String.length line then
+             match line.[0] with
+             | '!' -> Unsafe.(try_block ~unsafe img)
+             | '`' ->
+                 Unsafe.(try_block ~unsafe code_block)
+                 >=> try_code_block_by_bound
+             | '~' -> try_code_block_by_bound
+             | ' ' -> try_code_block_by_indent
+             | '<' ->
+                 Unsafe.(try_block ~unsafe div)
+                 >=> Unsafe.(try_block ~unsafe script)
+             | '*' -> try_hr >=> try_ul ~unsafe
+             | '#' -> try_header_by_sharp ~unsafe
+             | '>' -> try_quote ~unsafe
+             | c when Char.is_num c -> try_ol ~unsafe
+             | _ -> fun _lines -> None
+           else fun _lines -> None )
         >>= try_header_by_dash ~unsafe >>= try_p ~unsafe |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
