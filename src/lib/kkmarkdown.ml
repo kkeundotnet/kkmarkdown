@@ -128,7 +128,7 @@ and pp f = pp_list_with_line pp_block f
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 
-let gen_compose x f g y = match f x with Some _ as r -> r | None -> g y
+let ( >=> ) f g x = match f x with Some _ as r -> r | None -> g x
 
 (* Continuation status *)
 
@@ -442,7 +442,6 @@ let rec trans_spans ~unsafe =
     | [] -> close_status rev status |> List.rev
     | line :: _ ->
         let ( >>= ) = gen_bind cont in
-        let ( >=> ) = gen_compose cont in
         ( if cur < String.length line then
           cont
           |>
@@ -656,7 +655,6 @@ and trans_from_lines ~unsafe lines =
     | [] -> List.rev rev
     | line :: _ as lines ->
         let ( >>= ) = gen_bind lines in
-        let ( >=> ) = gen_compose lines in
         lines
         |> ( if 0 < String.length line then
              match line.[0] with
