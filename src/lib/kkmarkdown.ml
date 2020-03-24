@@ -3,6 +3,7 @@ module F = Format
 type span =
   | NoneSpan
   | CharSpan of char
+  | CharsSpan of string
   | UnicodeSpan of string
   | Br
   | EmOpen
@@ -70,6 +71,7 @@ let pp_list_with_line f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') f
 let rec pp_span f = function
   | NoneSpan -> ()
   | CharSpan c -> pp_char f c
+  | CharsSpan s -> pp_chars f s
   | UnicodeSpan s -> F.pp_print_string f s
   | Br -> pp_open f "br"
   | EmOpen -> pp_open f "em"
@@ -219,12 +221,14 @@ end = struct
         | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
     | _ -> None
 
-  let gen_inline_html ~tag = function
+  let gen_inline_html ~tag =
+    let tag_len = String.length tag in
+    function
     | line :: lines as all
       when String.is_prefix line ~prefix:("<" ^ tag)
-           && 1 + String.length tag < String.length line
-           && ( Char.equal line.[1 + String.length tag] ' '
-              || Char.equal line.[1 + String.length tag] '>' ) ->
+           && 1 + tag_len < String.length line
+           && ( Char.equal line.[1 + tag_len] ' '
+              || Char.equal line.[1 + tag_len] '>' ) ->
         Some
           ( match
               List.split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">"))
@@ -266,7 +270,6 @@ let try_escape_char =
         true
     | _ -> false
   in
-
   fun ({ cur; lines; _ } as cont) ->
     match lines with
     | line :: _
@@ -381,7 +384,18 @@ let try_char_span ({ cur; lines; _ } as cont) =
   match lines with
   | line :: lines' ->
       if cur < String.length line then
-        Some (CharSpan line.[cur], { cont with cur = cur + 1 })
+        let len = String.length line in
+        let rec read_chars n =
+          if n < len then
+            match line.[n] with
+            | '[' | '\\' | '&' | '*' | '`' | ' ' | '<' -> n
+            | _ -> read_chars (n + 1)
+          else n
+        in
+        let cur' = read_chars (cur + 1) in
+        Some
+          ( CharsSpan (String.sub line cur (cur' - cur)),
+            { cont with cur = cur' } )
       else
         let r = match lines' with [] -> NoneSpan | _ :: _ -> CharSpan '\n' in
         Some (r, { cont with cur = 0; lines = lines' })
@@ -421,18 +435,28 @@ let rec trans_spans ~unsafe =
     | InStrong :: status -> close_status (StrongClose :: rev) status
     | InEmStrong :: status -> close_status (EmStrongClose :: rev) status
   in
-  let rec trans ({ status; lines; _ } as cont) rev =
+  let rec trans ({ status; lines; cur } as cont) rev =
     match lines with
     | [] -> close_status rev status |> List.rev
-    | _ :: _ ->
+    | line :: _ ->
         let ( >>= ) = gen_bind cont in
-        None
-        >>= Unsafe.(
-              try_span ~unsafe
-                (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
-        >>= try_escape_char >>= try_unicode >>= try_em_strong >>= try_strong
-        >>= try_em >>= try_code >>= try_br >>= try_a >>= try_char_span
-        |> Option.value_exn
+        ( if cur < String.length line then
+          None
+          >>=
+          match line.[cur] with
+          | '[' ->
+              Unsafe.(
+                try_span ~unsafe
+                  (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
+          | '\\' -> try_escape_char
+          | '&' -> try_unicode
+          | '*' -> fun _cont -> None >>= try_em_strong >>= try_strong >>= try_em
+          | '`' -> try_code
+          | ' ' -> try_br
+          | '<' -> try_a
+          | _ -> fun _cont -> None
+        else None )
+        >>= try_char_span |> Option.value_exn
         |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
   in
   fun lines -> trans { cur = 0; status = []; lines } []
@@ -442,7 +466,7 @@ and trans_spans_of_line ~unsafe line = trans_spans ~unsafe [ line ]
 (* Parse blocks *)
 
 let is_empty_line line =
-  String.forall line ~f:(fun c -> Char.equal ' ' c || Char.equal '\t' c)
+  String.forall line ~f:(function ' ' | '\t' -> true | _ -> false)
 
 let is_ul_indent_start line = String.is_prefix line ~prefix:"* "
 
@@ -526,10 +550,6 @@ let try_header_by_dash ~unsafe = function
       Some (H2 (trans_spans_of_line ~unsafe line1), lines)
   | _ -> None
 
-let try_header ~unsafe lines =
-  let ( >>= ) = gen_bind lines in
-  None >>= try_header_by_sharp ~unsafe >>= try_header_by_dash ~unsafe
-
 let try_code_block_by_bound =
   let is_code_block_bound line =
     String.length line >= 3
@@ -556,10 +576,6 @@ let try_code_block_by_indent =
       | Some (cb, line, lines) ->
           Some (CodeBlock (remove_indent cb), line :: lines) )
   | _ -> None
-
-let try_code_block lines =
-  let ( >>= ) = gen_bind lines in
-  None >>= try_code_block_by_bound >>= try_code_block_by_indent
 
 let try_p ~unsafe lines =
   let p, lines =
@@ -635,16 +651,31 @@ and trans_from_lines ~unsafe lines =
   let rec trans lines rev =
     match List.remove_head lines ~f:is_empty_line with
     | [] -> List.rev rev
-    | lines ->
+    | line :: _ as lines ->
         let ( >>= ) = gen_bind lines in
         None
-        >>= Unsafe.(try_block ~unsafe img)
-        >>= Unsafe.(try_block ~unsafe code_block)
-        >>= Unsafe.(try_block ~unsafe div)
-        >>= Unsafe.(try_block ~unsafe script)
-        >>= try_hr >>= try_code_block >>= try_header ~unsafe
-        >>= try_quote ~unsafe >>= try_ul ~unsafe >>= try_ol ~unsafe
-        >>= try_p ~unsafe |> Option.value_exn
+        >>= ( if 0 < String.length line then
+              match line.[0] with
+              | '!' -> Unsafe.(try_block ~unsafe img)
+              | '`' ->
+                  fun _lines ->
+                    None
+                    >>= Unsafe.(try_block ~unsafe code_block)
+                    >>= try_code_block_by_bound
+              | '~' -> try_code_block_by_bound
+              | ' ' -> try_code_block_by_indent
+              | '<' ->
+                  fun _lines ->
+                    None
+                    >>= Unsafe.(try_block ~unsafe div)
+                    >>= Unsafe.(try_block ~unsafe script)
+              | '*' -> fun _lines -> None >>= try_hr >>= try_ul ~unsafe
+              | '#' -> try_header_by_sharp ~unsafe
+              | '>' -> try_quote ~unsafe
+              | c when Char.is_num c -> try_ol ~unsafe
+              | _ -> fun _lines -> None
+            else fun _lines -> None )
+        >>= try_header_by_dash ~unsafe >>= try_p ~unsafe |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
