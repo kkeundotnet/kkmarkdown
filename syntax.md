@@ -208,7 +208,7 @@ x=1
 is translated to
 
 ```
-<pre class="class1 class2"><code>x=1</code></pre>
+<pre><code class="class1 class2">x=1</code></pre>
 ```
 
 ### Some of inline HTMLs (unsafe mode only)

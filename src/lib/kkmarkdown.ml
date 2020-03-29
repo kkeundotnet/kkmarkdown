@@ -106,7 +106,7 @@ let rec pp_block f = function
   | Ol lis -> pp_wrap "ol" (pp_list_with_line pp_li) f lis
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
   | UnsafeCodeBlock { cb; classes } ->
-      pp_wrap "pre" ~classes (pp_wrap "code" (pp_list_with_line pp_chars)) f cb
+      pp_wrap "pre" (pp_wrap "code" ~classes (pp_list_with_line pp_chars)) f cb
   | UnsafeInlineHtml lines ->
       List.pp
         ~pp_sep:(fun f -> F.pp_print_newline f ())

@@ -204,11 +204,11 @@ code
 
 let test_unsafe_code_block () =
   unsafe_check "unsafe code block"
-    {|<pre class="c1 c2"><code>code</code></pre>|} {|``` {.c1 .c2}
+    {|<pre><code class="c1 c2">code</code></pre>|} {|``` {.c1 .c2}
 code
 ```|};
   unsafe_check "unsafe code block"
-    {|<pre class="c1 c2"><code>code</code></pre>|}
+    {|<pre><code class="c1 c2">code</code></pre>|}
     {|``` {  .c1 .c2  }
 code
 ```|}
