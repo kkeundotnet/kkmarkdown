@@ -681,4 +681,10 @@ and trans_from_lines ~unsafe lines =
 let trans ?(unsafe = false) s =
   String.split_to_lines s |> trans_from_lines ~unsafe
 
+let trans_from_file ?unsafe file =
+  let ch = open_in file in
+  let input = Util.get_input_from_channel ch in
+  close_in_noerr ch;
+  trans ?unsafe input
+
 let trans_to_string ?unsafe s = trans ?unsafe s |> F.asprintf "%a" pp
