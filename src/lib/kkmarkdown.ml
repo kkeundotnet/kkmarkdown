@@ -91,7 +91,7 @@ let rec pp_span f = function
 
 and pp_span_list f = List.pp pp_span f
 
-let rec pp_block f = function
+let rec pp_block ~rss f = function
   | P sps -> pp_wrap "p" pp_span_list f sps
   | Hr -> pp_open f "hr"
   | H1 sps -> pp_wrap "h1" pp_span_list f sps
@@ -106,15 +106,21 @@ let rec pp_block f = function
   | Ol lis -> pp_wrap "ol" (pp_list_with_line pp_li) f lis
   | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
   | UnsafeCodeBlock { cb; classes } ->
-      pp_wrap "pre" (pp_wrap "code" ~classes (pp_list_with_line pp_chars)) f cb
+      let pp_wrap_code pp f x =
+        if rss then pp_wrap "code" pp f x else pp_wrap "code" ~classes pp f x
+      in
+      pp_wrap "pre" (pp_wrap_code (pp_list_with_line pp_chars)) f cb
   | UnsafeInlineHtml lines ->
-      List.pp
-        ~pp_sep:(fun f -> F.pp_print_newline f ())
-        F.pp_print_string f lines
+      if not rss then
+        List.pp
+          ~pp_sep:(fun f -> F.pp_print_newline f ())
+          F.pp_print_string f lines
   | UnsafeImg { alt; link; classes } ->
+      let pp_class_prop f classes =
+        if not rss then F.fprintf f {| class="%a"|} pp_classes classes
+      in
       let pp_img f () =
-        F.fprintf f {|<img alt="%s" src="%s" class="%a">|} alt link pp_classes
-          classes
+        F.fprintf f {|<img alt="%s" src="%s"%a>|} alt link pp_class_prop classes
       in
       pp_wrap "p" pp_img f ()
 
@@ -122,7 +128,7 @@ and pp_li f = function
   | Li sps -> pp_wrap "li" pp_span_list f sps
   | LiP blocks -> pp_wrap "li" pp f blocks
 
-and pp f = pp_list_with_line pp_block f
+and pp ?(rss = false) f = pp_list_with_line (pp_block ~rss) f
 
 (* >>= *)
 
@@ -687,4 +693,5 @@ let trans_from_file ?unsafe file =
   close_in_noerr ch;
   trans ?unsafe input
 
-let trans_to_string ?unsafe s = trans ?unsafe s |> F.asprintf "%a" pp
+let trans_to_string ?unsafe ?rss s =
+  trans ?unsafe s |> F.asprintf "%a" (pp ?rss)

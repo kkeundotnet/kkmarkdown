@@ -2,13 +2,20 @@ module F = Format
 module Kkmarkdown = Kkmarkdown_lib.Kkmarkdown
 
 let trans ?unsafe input =
-  F.asprintf "%a" Kkmarkdown.pp (Kkmarkdown.trans ?unsafe input)
+  F.asprintf "%a" (Kkmarkdown.pp ~rss:false) (Kkmarkdown.trans ?unsafe input)
+
+let trans_rss input =
+  F.asprintf "%a" (Kkmarkdown.pp ~rss:true)
+    (Kkmarkdown.trans ~unsafe:true input)
 
 let check msg expecting input =
   Alcotest.(check string) msg expecting (trans input)
 
 let unsafe_check msg expecting input =
   Alcotest.(check string) msg expecting (trans ~unsafe:true input)
+
+let rss_check msg expecting input =
+  Alcotest.(check string) msg expecting (trans_rss input)
 
 let test_a () =
   check "a" {|<p><a href="https://kkeun.net">https://kkeun.net</a></p>|}
@@ -186,6 +193,12 @@ let test_unsafe_img () =
   unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
     {|![  alt  ](  link  ) {   }|}
 
+let test_rss_img () =
+  rss_check "rss img" {|<p><img alt="alt" src="link"></p>|}
+    {|![  alt  ](  link  ) {  .c1  .c2  }|};
+  rss_check "rss img" {|<p><img alt="alt" src="link"></p>|}
+    {|![  alt  ](  link  ) {   }|}
+
 let test_no_unsafe_code_block () =
   check "no unsafe code block"
     {|<p><code></code><code> {.c1 .c2}
@@ -209,6 +222,16 @@ code
 ```|};
   unsafe_check "unsafe code block"
     {|<pre><code class="c1 c2">code</code></pre>|}
+    {|``` {  .c1 .c2  }
+code
+```|}
+
+let test_rss_code_block () =
+  rss_check "rss code block" {|<pre><code>code</code></pre>|}
+    {|``` {.c1 .c2}
+code
+```|};
+  rss_check "rss code block" {|<pre><code>code</code></pre>|}
     {|``` {  .c1 .c2  }
 code
 ```|}
@@ -238,6 +261,14 @@ contents
 contents
 </div>|}
     {|<div class="a">
+contents
+</div>|}
+
+let test_rss_div () =
+  rss_check "rss div" {||} {|<div>
+contents
+</div>|};
+  rss_check "rss div" {||} {|<div class="a">
 contents
 </div>|}
 
@@ -278,6 +309,14 @@ contents
 contents
 </script>|}
 
+let test_rss_script () =
+  rss_check "rss script" {||} {|<script>
+contents
+</script>|};
+  rss_check "rss script" {||} {|<script class="a">
+contents
+</script>|}
+
 let tests =
   [
     ("a", `Quick, test_a);
@@ -306,4 +345,8 @@ let tests =
     ("unsafe_div", `Quick, test_unsafe_div);
     ("unsafe_img", `Quick, test_unsafe_img);
     ("unsafe_script", `Quick, test_unsafe_script);
+    ("rss_code_block", `Quick, test_rss_code_block);
+    ("rss_div", `Quick, test_rss_div);
+    ("rss_img", `Quick, test_rss_img);
+    ("rss_script", `Quick, test_rss_script);
   ]

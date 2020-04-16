@@ -64,6 +64,16 @@ In html:
 <script>result = kkmarkdown.unsafe("*abc*");</script>
 ```
 
+### RSS mode
+
+*RSS mode* suppresses `class`es and inline HTMLs in the unsafe mode.
+HTML `class`es or inline HTMLs including javscripts may not work
+properly in external feed readers.
+
+```
+$ kkmarkdown --rss --unsafe [FILE]
+```
+
 Install
 ---
 
