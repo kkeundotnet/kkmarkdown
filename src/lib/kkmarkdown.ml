@@ -85,6 +85,8 @@ let rec pp_span f = function
       pp_close f "strong";
       pp_close f "em"
   | CodeSpan code -> pp_wrap "code" (pp_list_with_line pp_chars) f code
+  | A s when String.is_prefix s ~prefix:"https://" ->
+      F.fprintf f {|<a href="%s">%a</a>|} s pp_chars (String.sub_from s 8)
   | A s -> F.fprintf f {|<a href="%s">%a</a>|} s pp_chars s
   | UnsafeA { spans; link } ->
       F.fprintf f {|<a href="%s">%a</a>|} link pp_span_list spans

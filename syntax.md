@@ -53,13 +53,25 @@ will NOT be translated to as we can imagine, i.e.,
 Only the next form of link syntax, so called "automatic links", is supported.
 
 ```
+<http://kkeun.net/>
+```
+
+is translated to
+
+```
+<a href="http://kkeun.net/">http://kkeun.net/</a>
+```
+
+For simplicity, `https://` is omitted, so
+
+```
 <https://kkeun.net/>
 ```
 
 is translated to
 
 ```
-<a href="https://kkeun.net/">https://kkeun.net/</a>
+<a href="https://kkeun.net/">kkeun.net/</a>
 ```
 
 The link must start with `https://` and `http://`, not the others.

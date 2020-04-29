@@ -18,10 +18,14 @@ let rss_check msg expecting input =
   Alcotest.(check string) msg expecting (trans_rss input)
 
 let test_a () =
-  check "a" {|<p><a href="https://kkeun.net">https://kkeun.net</a></p>|}
+  check "a" {|<p><a href="https://kkeun.net">kkeun.net</a></p>|}
     {|<https://kkeun.net>|};
-  check "a" {|<p>woo <a href="https://kkeun.net">https://kkeun.net</a> woo</p>|}
+  check "a" {|<p>woo <a href="https://kkeun.net">kkeun.net</a> woo</p>|}
     {|woo <https://kkeun.net> woo|};
+  check "a" {|<p><a href="http://kkeun.net">http://kkeun.net</a></p>|}
+    {|<http://kkeun.net>|};
+  check "a" {|<p>woo <a href="http://kkeun.net">http://kkeun.net</a> woo</p>|}
+    {|woo <http://kkeun.net> woo|};
   check "a" {|<p>&lt;javascript:void(0)&gt;</p>|} {|<javascript:void(0)>|};
   check "a" {|<p>&lt;&quot; onclick=&quot;myattack&gt;</p>|}
     {|<" onclick="myattack>|}
