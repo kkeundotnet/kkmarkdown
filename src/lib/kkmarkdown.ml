@@ -104,9 +104,9 @@ let rec pp_block ~rss f = function
   | H6 sps -> pp_wrap "h6" pp_span_list f sps
   | CodeBlock code_block ->
       pp_wrap "pre" (pp_wrap "code" (pp_list_with_line pp_chars)) f code_block
-  | Quote quote -> pp_wrap "blockquote" pp f quote
-  | Ol lis -> pp_wrap "ol" (pp_list_with_line pp_li) f lis
-  | Ul lis -> pp_wrap "ul" (pp_list_with_line pp_li) f lis
+  | Quote quote -> pp_wrap "blockquote" (pp ~rss) f quote
+  | Ol lis -> pp_wrap "ol" (pp_list_with_line (pp_li ~rss)) f lis
+  | Ul lis -> pp_wrap "ul" (pp_list_with_line (pp_li ~rss)) f lis
   | UnsafeCodeBlock { cb; classes } ->
       let pp_wrap_code pp f x =
         if rss then pp_wrap "code" pp f x else pp_wrap "code" ~classes pp f x
@@ -126,9 +126,9 @@ let rec pp_block ~rss f = function
       in
       pp_wrap "p" pp_img f ()
 
-and pp_li f = function
+and pp_li ~rss f = function
   | Li sps -> pp_wrap "li" pp_span_list f sps
-  | LiP blocks -> pp_wrap "li" pp f blocks
+  | LiP blocks -> pp_wrap "li" (pp ~rss) f blocks
 
 and pp ?(rss = false) f = pp_list_with_line (pp_block ~rss) f
 
