@@ -14,5 +14,7 @@ run-test: ["dune" "runtest" "-p" name]
 
 depends: [
   "dune" {build}
+  "js_of_ocaml"
+  "js_of_ocaml-ppx"
   "alcotest" {with-test}
 ]
