@@ -10,3 +10,8 @@
  (targets kkmarkdown.js)
  (action
   (copy %{dep:KkmarkdownJs.bc.js} %{targets})))
+
+(install
+ (files kkmarkdown.js)
+ (section share)
+ (package kkmarkdown))

@@ -1,5 +1,5 @@
 .PHONY: default
-default: build kkmarkdown.js
+default: build
 
 .PHONY: build
 build:
@@ -20,6 +20,3 @@ uninstall:
 .PHONY: clean
 clean:
 	dune clean
-
-kkmarkdown.js: build
-	cp -f _build/default/src/js/kkmarkdown.js .
