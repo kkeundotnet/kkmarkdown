@@ -1,26 +1,25 @@
-# Frontend to dune.
+.PHONY: default
+default: build kkmarkdown.js
 
-.PHONY: default build js install uninstall test clean
-
-default: build js
-
+.PHONY: build
 build:
 	dune build
 
-js:
-	dune build src/js/kkmarkdown-js.js
-
+.PHONY: test
 test:
 	dune runtest -f
 
+.PHONY: install
 install:
 	dune install
 
+.PHONY: uninstall
 uninstall:
 	dune uninstall
 
+.PHONY: clean
 clean:
 	dune clean
-# Optionally, remove all files/folders ignored by git as defined
-# in .gitignore (-X).
-	git clean -dfXq
+
+kkmarkdown.js: build
+	cp -f _build/default/src/js/kkmarkdown.js .

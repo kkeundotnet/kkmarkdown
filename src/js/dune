@@ -1,17 +1,12 @@
 ; names = name of the files to compile into executables
 ; public_names = name of the executables
-(executables
- (names kkmarkdownJs)
- (public_names kkmarkdownJs)
- (libraries
-  kkmarkdown.lib
-  js_of_ocaml
- )
- (modes byte)
- (preprocess (pps js_of_ocaml-ppx))
- (package kkmarkdown))
+(executable
+ (name KkmarkdownJs)
+ (modes js)
+ (libraries kkmarkdown.lib js_of_ocaml)
+ (preprocess (pps js_of_ocaml-ppx)))
 
 (rule
- (targets kkmarkdown-js.js)
+ (targets kkmarkdown.js)
  (action
-  (run %{bin:js_of_ocaml} %{dep:kkmarkdownJs.bc} -o %{targets})))
+  (copy %{dep:KkmarkdownJs.bc.js} %{targets})))
