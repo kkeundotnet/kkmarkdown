@@ -49,7 +49,7 @@ $ kkmarkdown a
 In html:
 
 ```
-<script src='https://kkeun.net/kkmarkdown-js.js'></script>
+<script src='https://kkeun.net/kkmarkdown.js'></script>
 <script>result = kkmarkdown.trans("*abc*");</script>
 ```
 
