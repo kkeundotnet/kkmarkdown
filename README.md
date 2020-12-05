@@ -19,9 +19,8 @@ $ make test
 
 It will make
 
-* one executable `_build/defualt/src/bin/kkmarkdown.exe` (samely
-  `_build/install/default/bin/kkmarkdown`)
-* one javascript `_build/default/src/js/kkmarkdown-js.js`
+* one executable `_build/install/default/bin/kkmarkdown`
+* one javascript `_build/install/default/share/kkmarkdown/kkmarkdown.js`
 
 In shell (using stdin):
 
@@ -72,18 +71,4 @@ properly in external feed readers.
 
 ```
 $ kkmarkdown --rss --unsafe [FILE]
-```
-
-Install
----
-
-```
-$ opam pin add kkmarkdown .
-```
-
-or
-
-```
-$ make install
-$ make uninstall
 ```
