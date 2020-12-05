@@ -12,6 +12,14 @@ Supported syntax are listed here:
 Build & run
 ---
 
+Install dependencies:
+
+```
+$ opam install dune js_of_ocaml js_of_ocaml-ppx alcotest
+```
+
+Build:
+
 ```
 $ make
 $ make test
