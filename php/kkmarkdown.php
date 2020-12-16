@@ -61,11 +61,15 @@ class Kkmarkdown
                 return $result;
             }
         }
-        die("kkmarkdown failed");
+        die("kkmarkdown failed: transform");
     }
 
     public function transform_from_file(string $file) : string
     {
-        return shell_exec("{$this->get_cmd()} {$file}");
+        $contents = file_get_contents($file);
+        if ($contents === false) {
+            return $this->transform($contents);
+        }
+        die("kkmarkdown failed: transform_from_file");
     }
 }
