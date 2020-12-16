@@ -67,7 +67,7 @@ class Kkmarkdown
     public function transform_from_file(string $file) : string
     {
         $contents = file_get_contents($file);
-        if ($contents === false) {
+        if ($contents !== false) {
             return $this->transform($contents);
         }
         die("kkmarkdown failed: transform_from_file");
