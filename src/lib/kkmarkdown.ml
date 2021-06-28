@@ -60,9 +60,9 @@ let pp_open ?classes f tag =
 let pp_close f tag = F.fprintf f "</%s>" tag
 
 let pp_wrap tag ?classes pp f x =
-  ( match classes with
+  (match classes with
   | None -> pp_open f tag
-  | Some classes -> pp_open ~classes f tag );
+  | Some classes -> pp_open ~classes f tag);
   pp f x;
   pp_close f tag
 
@@ -228,7 +228,7 @@ end = struct
         in
         match List.split_by_first lines ~f:(String.equal code_block_bound) with
         | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
-        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines) )
+        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines))
     | _ -> None
 
   let gen_inline_html ~tag =
@@ -237,17 +237,17 @@ end = struct
     | line :: lines as all
       when String.is_prefix line ~prefix:("<" ^ tag)
            && 1 + tag_len < String.length line
-           && ( Char.equal line.[1 + tag_len] ' '
-              || Char.equal line.[1 + tag_len] '>' ) ->
+           && (Char.equal line.[1 + tag_len] ' '
+              || Char.equal line.[1 + tag_len] '>') ->
         Some
-          ( match
-              List.split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">"))
-            with
+          (match
+             List.split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">"))
+           with
           | None -> (UnsafeInlineHtml all, [])
           | Some (div_body, div_close, lines) ->
               ( UnsafeInlineHtml
                   (line :: List.append_tailrec div_body [ div_close ]),
-                lines ) )
+                lines ))
     | _ -> None
 
   (* <div> *)
@@ -347,7 +347,7 @@ let try_paren s in_paren ~open_ ~close { cur; status; lines } =
       match status with
       | hd :: tl when status_equal hd in_paren ->
           Some (close, { cur; status = tl; lines })
-      | _ -> Some (open_, { cur; status = in_paren :: status; lines }) )
+      | _ -> Some (open_, { cur; status = in_paren :: status; lines }))
   | _ -> None
 
 let try_em = try_paren "*" InEm ~open_:EmOpen ~close:EmClose
@@ -367,7 +367,7 @@ let try_code =
           | None -> split lines (line :: rev)
           | Some cur ->
               let code = String.sub line 0 cur in
-              Some (List.rev (code :: rev), cur, line :: lines) )
+              Some (List.rev (code :: rev), cur, line :: lines))
     in
     split lines []
   in
@@ -379,7 +379,7 @@ let try_code =
         match split_by_first_char '`' lines with
         | None -> Some (CodeSpan lines, { cont with cur = 0; lines = [] })
         | Some (code, cur, lines) ->
-            Some (CodeSpan code, { cont with cur = cur + 1; lines }) )
+            Some (CodeSpan code, { cont with cur = cur + 1; lines }))
     | _ -> None
 
 let try_br ({ cur; lines; _ } as cont) =
@@ -435,7 +435,7 @@ let try_a =
         | Some end_ ->
             let link = String.sub line start (end_ - start) in
             Some (A link, { cont with cur = end_ + 1 })
-        | None -> None )
+        | None -> None)
     | _ -> None
 
 let rec trans_spans ~unsafe =
@@ -450,22 +450,22 @@ let rec trans_spans ~unsafe =
     | [] -> close_status rev status |> List.rev
     | line :: _ ->
         let ( >>= ) = gen_bind cont in
-        ( if cur < String.length line then
-          cont
-          |>
-          match line.[cur] with
-          | '[' ->
-              Unsafe.(
-                try_span ~unsafe
-                  (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
-          | '\\' -> try_escape_char
-          | '&' -> try_unicode
-          | '*' -> try_em_strong >=> try_strong >=> try_em
-          | '`' -> try_code
-          | ' ' -> try_br
-          | '<' -> try_a
-          | _ -> fun _cont -> None
-        else None )
+        (if cur < String.length line then
+         cont
+         |>
+         match line.[cur] with
+         | '[' ->
+             Unsafe.(
+               try_span ~unsafe
+                 (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
+         | '\\' -> try_escape_char
+         | '&' -> try_unicode
+         | '*' -> try_em_strong >=> try_strong >=> try_em
+         | '`' -> try_code
+         | ' ' -> try_br
+         | '<' -> try_a
+         | _ -> fun _cont -> None
+        else None)
         >>= try_char_span |> Option.value_exn
         |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
   in
@@ -563,14 +563,14 @@ let try_header_by_dash ~unsafe = function
 let try_code_block_by_bound =
   let is_code_block_bound line =
     String.length line >= 3
-    && ( String.forall line ~f:(Char.equal '`')
-       || String.forall line ~f:(Char.equal '~') )
+    && (String.forall line ~f:(Char.equal '`')
+       || String.forall line ~f:(Char.equal '~'))
   in
   function
   | line :: lines when is_code_block_bound line -> (
       match List.split_by_first lines ~f:(String.equal line) with
       | None -> Some (CodeBlock lines, [])
-      | Some (cb, _, lines) -> Some (CodeBlock cb, lines) )
+      | Some (cb, _, lines) -> Some (CodeBlock cb, lines))
   | _ -> None
 
 let try_code_block_by_indent =
@@ -584,7 +584,7 @@ let try_code_block_by_indent =
       with
       | None -> Some (CodeBlock (remove_indent x), [])
       | Some (cb, line, lines) ->
-          Some (CodeBlock (remove_indent cb), line :: lines) )
+          Some (CodeBlock (remove_indent cb), line :: lines))
   | _ -> None
 
 let try_p ~unsafe lines =
@@ -622,7 +622,7 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
         | Some (xl, cont_line, cont_lines) ->
             Some
               ( constructor (trans_xl_elems ~unsafe (line :: xl)),
-                cont_line :: cont_lines ) )
+                cont_line :: cont_lines ))
     | _ -> None
 
 and try_ul ~unsafe lines =
@@ -654,7 +654,7 @@ and try_quote =
         | Some (quote, _, lines) ->
             Some
               ( Quote (remove_indent (line :: quote) |> trans_from_lines ~unsafe),
-                lines ) )
+                lines ))
     | _ -> None
 
 and trans_from_lines ~unsafe lines =
@@ -664,23 +664,23 @@ and trans_from_lines ~unsafe lines =
     | line :: _ as lines ->
         let ( >>= ) = gen_bind lines in
         lines
-        |> ( if 0 < String.length line then
-             match line.[0] with
-             | '!' -> Unsafe.(try_block ~unsafe img)
-             | '`' ->
-                 Unsafe.(try_block ~unsafe code_block)
-                 >=> try_code_block_by_bound
-             | '~' -> try_code_block_by_bound
-             | ' ' -> try_code_block_by_indent
-             | '<' ->
-                 Unsafe.(try_block ~unsafe div)
-                 >=> Unsafe.(try_block ~unsafe script)
-             | '*' -> try_hr >=> try_ul ~unsafe
-             | '#' -> try_header_by_sharp ~unsafe
-             | '>' -> try_quote ~unsafe
-             | c when Char.is_num c -> try_ol ~unsafe
-             | _ -> fun _lines -> None
-           else fun _lines -> None )
+        |> (if 0 < String.length line then
+            match line.[0] with
+            | '!' -> Unsafe.(try_block ~unsafe img)
+            | '`' ->
+                Unsafe.(try_block ~unsafe code_block)
+                >=> try_code_block_by_bound
+            | '~' -> try_code_block_by_bound
+            | ' ' -> try_code_block_by_indent
+            | '<' ->
+                Unsafe.(try_block ~unsafe div)
+                >=> Unsafe.(try_block ~unsafe script)
+            | '*' -> try_hr >=> try_ul ~unsafe
+            | '#' -> try_header_by_sharp ~unsafe
+            | '>' -> try_quote ~unsafe
+            | c when Char.is_num c -> try_ol ~unsafe
+            | _ -> fun _lines -> None
+           else fun _lines -> None)
         >>= try_header_by_dash ~unsafe >>= try_p ~unsafe |> Option.value_exn
         |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
   in
