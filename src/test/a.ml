@@ -62,7 +62,12 @@ int y;
   check "code block" {|<pre><code>int x;
 int y;</code></pre>|}
     {|    int x;
-    int y;|}
+    int y;|};
+  check "code block" {|<pre><code>int x;
+int y;</code></pre>|}
+    {|    int x;
+    int y;
+|}
 
 let test_empty () =
   check "empty" "" "";

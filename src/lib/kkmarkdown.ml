@@ -583,8 +583,9 @@ let try_code_block_by_indent =
             not (is_code_block_indent line))
       with
       | None -> Some (CodeBlock (remove_indent x), [])
-      | Some (cb, line, lines) ->
-          Some (CodeBlock (remove_indent cb), line :: lines))
+      | Some (cb, cont_line, cont_lines) ->
+          Some (CodeBlock (remove_indent (line :: cb)), cont_line :: cont_lines)
+      )
   | _ -> None
 
 let try_p ~unsafe lines =
