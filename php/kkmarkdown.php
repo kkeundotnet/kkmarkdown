@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Kkeundotnet\Kkmarkdown;
@@ -14,19 +15,19 @@ class Kkmarkdown
         $this->bin_path = $bin_path;
     }
 
-    public function set_rss() : self
+    public function set_rss(): self
     {
         $this->rss = true;
         return $this;
     }
 
-    public function set_unsafe() : self
+    public function set_unsafe(): self
     {
         $this->unsafe = true;
         return $this;
     }
 
-    private function get_cmd() : string
+    private function get_cmd(): string
     {
         $cmd = $this->bin_path;
         if ($this->rss) {
@@ -38,7 +39,7 @@ class Kkmarkdown
         return $cmd;
     }
 
-    public function transform(string $md) : string
+    public function transform(string $md): string
     {
         $descriptorspec = [
             0 => ['pipe', 'r'], // stdin is a pipe that the child will read from
@@ -64,7 +65,7 @@ class Kkmarkdown
         die("kkmarkdown failed: transform");
     }
 
-    public function transform_from_file(string $file) : string
+    public function transform_from_file(string $file): string
     {
         $contents = file_get_contents($file);
         if ($contents !== false) {
