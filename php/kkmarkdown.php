@@ -6,13 +6,12 @@ namespace Kkeundotnet\Kkmarkdown;
 
 class Kkmarkdown
 {
-    private string $bin_path;
     private bool $rss = false;
     private bool $unsafe = false;
 
-    public function __construct(string $bin_path)
-    {
-        $this->bin_path = $bin_path;
+    public function __construct(
+        private readonly string $bin_path,
+    ) {
     }
 
     public function set_rss(): self
