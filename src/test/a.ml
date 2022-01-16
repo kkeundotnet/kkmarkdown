@@ -69,6 +69,83 @@ int y;</code></pre>|}
     int y;
 |}
 
+let test_deep_block () =
+  check "quote"
+    {|<blockquote><blockquote><blockquote><blockquote><blockquote><p>&gt; no quote here</p></blockquote></blockquote></blockquote></blockquote></blockquote>|}
+    {|> > > > > > no quote here|};
+  check "ol"
+    {|<ol><li><p>a</p></li>
+<li><ol><li><p>b</p></li>
+<li><ol><li><p>c</p></li>
+<li><ol><li><p>d</p></li>
+<li><ol><li><p>ok</p></li>
+<li><p>1.  no ol here</p>
+<p>2.  no ol here</p></li></ol></li></ol></li></ol></li></ol></li></ol>|}
+    {|1.  a
+
+2.  1.  b
+
+    2.  1.  c
+
+        2.  1.  d
+
+            2.  1.  ok
+
+                2.  1.  no ol here
+
+                    2.  no ol here|};
+  check "ul"
+    {|<ul><li><p>a</p></li>
+<li><ul><li><p>b</p></li>
+<li><ul><li><p>c</p></li>
+<li><ul><li><p>d</p></li>
+<li><ul><li><p>ok</p></li>
+<li><p><em>   no ul here</em></p></li>
+<li><p><em>   no ul here</em></p></li></ul></li></ul></li></ul></li></ul></li></ul>|}
+    {|*   a
+
+*   *   b
+
+    *   *   c
+
+        *   *   d
+
+            *   *   ok
+
+                *   *   no ul here
+
+                *   *   no ul here|};
+  check "mixed"
+    {|<ul><li><p>a</p></li>
+<li><blockquote><p>b</p>
+<ol><li><p>c</p></li>
+<li><ul><li><p>d</p></li>
+<li><blockquote><p>ok</p>
+<p>1.  no ol here</p>
+<p>1.  no ol here</p>
+<p><em>   no ul here</em></p>
+<p><em>   no ul here</em></p>
+<p>&gt; no quote here</p></blockquote></li></ul></li></ol></blockquote></li></ul>|}
+    {|*   a
+
+*   > b
+    >
+    > 1.  c
+    >
+    > 2.  *  d
+    >
+    >     *  > ok
+    >        >
+    >        > 1.  no ol here
+    >        >
+    >        > 1.  no ol here
+    >        >
+    >        > *   no ul here
+    >        >
+    >        > *   no ul here
+    >        >
+    >        > > no quote here|}
+
 let test_empty () =
   check "empty" "" "";
   check "empty" "" "\n";
@@ -332,6 +409,7 @@ let tests =
     ("br", `Quick, test_br);
     ("code", `Quick, test_code);
     ("code block", `Quick, test_code_block);
+    ("deep block", `Quick, test_deep_block);
     ("em", `Quick, test_em);
     ("em_strong", `Quick, test_em_strong);
     ("empty", `Quick, test_empty);

@@ -596,14 +596,16 @@ let try_p ~unsafe lines =
   in
   Some (P (trans_spans ~unsafe p), lines)
 
+let block_max_depth = 4
+
 let rec gen_try_xl constructor is_indent_start remove_indent =
-  let trans_xl_elems ~unsafe lines =
+  let trans_xl_elems ~unsafe ~depth lines =
     let groups =
       List.strip lines ~f:is_empty_line |> List.group ~f:is_indent_start
     in
     let trans_elem =
       if List.exists (List.exists is_empty_line) groups then fun lines ->
-        LiP (trans_from_lines ~unsafe lines)
+        LiP (trans_from_lines ~unsafe ~depth lines)
       else fun lines -> Li (trans_spans ~unsafe lines)
     in
     List.map (fun group -> List.map remove_indent group |> trans_elem) groups
@@ -613,24 +615,33 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     || String.is_prefix line ~prefix:" "
     || is_empty_line line
   in
-  fun ~unsafe lines ->
-    match lines with
-    | line :: lines' when is_indent_start line -> (
-        match
-          List.split_by_first lines' ~f:(fun line -> not (is_xl_indent line))
-        with
-        | None -> Some (constructor (trans_xl_elems ~unsafe lines), [])
-        | Some (xl, cont_line, cont_lines) ->
-            Some
-              ( constructor (trans_xl_elems ~unsafe (line :: xl)),
-                cont_line :: cont_lines ))
-    | _ -> None
+  fun ~unsafe ~depth lines ->
+    if depth > block_max_depth then None
+    else
+      let depth = depth + 1 in
+      match lines with
+      | line :: lines' when is_indent_start line ->
+          let xl_lines, cont_lines =
+            match
+              List.split_by_first lines' ~f:(fun line ->
+                  not (is_xl_indent line))
+            with
+            | None -> (lines, [])
+            | Some (xl, cont_line, cont_lines) ->
+                (line :: xl, cont_line :: cont_lines)
+          in
+          Some (constructor (trans_xl_elems ~unsafe ~depth xl_lines), cont_lines)
+      | _ -> None
 
-and try_ul ~unsafe lines =
-  gen_try_xl (fun x -> Ul x) is_ul_indent_start remove_ul_indent ~unsafe lines
+and try_ul ~unsafe ~depth lines =
+  gen_try_xl
+    (fun x -> Ul x)
+    is_ul_indent_start remove_ul_indent ~unsafe ~depth lines
 
-and try_ol ~unsafe lines =
-  gen_try_xl (fun x -> Ol x) is_ol_indent_start remove_ol_indent ~unsafe lines
+and try_ol ~unsafe ~depth lines =
+  gen_try_xl
+    (fun x -> Ol x)
+    is_ol_indent_start remove_ol_indent ~unsafe ~depth lines
 
 and try_quote =
   let is_quote_indent line = String.is_prefix line ~prefix:"> " in
@@ -646,19 +657,24 @@ and try_quote =
     in
     List.map remove_indent lines
   in
-  fun ~unsafe lines ->
-    match lines with
-    | line :: lines' when is_quote_indent line -> (
-        match List.split_by_first lines' ~f:is_empty_line with
-        | None ->
-            Some (Quote (remove_indent lines |> trans_from_lines ~unsafe), [])
-        | Some (quote, _, lines) ->
-            Some
-              ( Quote (remove_indent (line :: quote) |> trans_from_lines ~unsafe),
-                lines ))
-    | _ -> None
+  fun ~unsafe ~depth lines ->
+    if depth > block_max_depth then None
+    else
+      let depth = depth + 1 in
+      match lines with
+      | line :: lines' when is_quote_indent line ->
+          let quote_lines, cont_lines =
+            match List.split_by_first lines' ~f:is_empty_line with
+            | None -> (lines, [])
+            | Some (quote, _, lines) -> (line :: quote, lines)
+          in
+          Some
+            ( Quote
+                (remove_indent quote_lines |> trans_from_lines ~unsafe ~depth),
+              cont_lines )
+      | _ -> None
 
-and trans_from_lines ~unsafe lines =
+and trans_from_lines ~unsafe ~depth lines =
   let rec trans lines rev =
     match List.remove_head lines ~f:is_empty_line with
     | [] -> List.rev rev
@@ -676,10 +692,10 @@ and trans_from_lines ~unsafe lines =
             | '<' ->
                 Unsafe.(try_block ~unsafe div)
                 >=> Unsafe.(try_block ~unsafe script)
-            | '*' -> try_hr >=> try_ul ~unsafe
+            | '*' -> try_hr >=> try_ul ~unsafe ~depth
             | '#' -> try_header_by_sharp ~unsafe
-            | '>' -> try_quote ~unsafe
-            | c when Char.is_num c -> try_ol ~unsafe
+            | '>' -> try_quote ~unsafe ~depth
+            | c when Char.is_num c -> try_ol ~unsafe ~depth
             | _ -> fun _lines -> None
            else fun _lines -> None)
         >>= try_header_by_dash ~unsafe >>= try_p ~unsafe |> Option.value_exn
@@ -688,7 +704,7 @@ and trans_from_lines ~unsafe lines =
   trans lines []
 
 let trans ?(unsafe = false) s =
-  String.split_to_lines s |> trans_from_lines ~unsafe
+  String.split_to_lines s |> trans_from_lines ~unsafe ~depth:0
 
 let trans_from_file ?unsafe file =
   let ch = open_in file in
