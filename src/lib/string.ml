@@ -6,9 +6,7 @@ let foralli_from n s ~f =
   check n
 
 let foralli s ~f = foralli_from 0 s ~f
-
 let forall_from n s ~f = foralli_from n s ~f:(fun _i c -> f c)
-
 let forall s ~f = forall_from 0 s ~f
 
 let is_sub cur line ~sub =
@@ -28,9 +26,7 @@ let index_sub_from_opt cur line ~sub =
   index_sub_from_opt cur
 
 let index_sub_opt line ~sub = index_sub_from_opt 0 line ~sub
-
 let is_prefix line ~prefix = is_sub 0 line ~sub:prefix
-
 let sub_from s n = sub s n (length s - n)
 
 let split_to_lines s =

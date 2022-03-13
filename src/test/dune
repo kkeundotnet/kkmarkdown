@@ -1,7 +1,3 @@
 (library
  (name kkmarkdown_test)
- (libraries
-  alcotest
-  kkmarkdown.lib
- )
-)
+ (libraries alcotest kkmarkdown.lib))

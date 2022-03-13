@@ -12,3 +12,8 @@ test:
 .PHONY: clean
 clean:
 	dune clean
+
+.PHONY: fmt
+fmt:
+	-dune build @fmt
+	-dune promote

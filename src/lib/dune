@@ -1,4 +1,3 @@
 (library
  (name kkmarkdown_lib)
- (public_name kkmarkdown.lib)
-)
+ (public_name kkmarkdown.lib))

@@ -34,7 +34,6 @@ type block =
   | UnsafeInlineHtml of string list
 
 and li = Li of span list | LiP of block list
-
 and t = block list
 
 (* Pretty print *)
@@ -135,7 +134,6 @@ and pp ?(rss = false) f = pp_list_with_line (pp_block ~rss) f
 (* >>= *)
 
 let gen_bind x f g = match f with Some _ as r -> r | None -> g x
-
 let ( >=> ) f g x = match f x with Some _ as r -> r | None -> g x
 
 (* Continuation status *)
@@ -150,7 +148,6 @@ type spans_cont = { cur : int; status : status list; lines : string list }
 
 module Unsafe : sig
   type unsafe_f_span
-
   type unsafe_f_block
 
   val try_span :
@@ -160,27 +157,19 @@ module Unsafe : sig
     unsafe:bool -> unsafe_f_block -> string list -> (block * string list) option
 
   val a : trans_spans_of_line:(string -> span list) -> unsafe_f_span
-
   val img : unsafe_f_block
-
   val code_block : unsafe_f_block
-
   val div : unsafe_f_block
-
   val script : unsafe_f_block
 end = struct
   let ( let* ) = Option.bind
-
   let ( let+ ) x f = Option.map f x
 
   type unsafe_f_span = spans_cont -> (span * spans_cont) option
-
   type unsafe_f_block = string list -> (block * string list) option
 
   let try_ ~unsafe f x = if unsafe then f x else None
-
   let try_span = try_
-
   let try_block = try_
 
   let read_classes s =
@@ -351,7 +340,6 @@ let try_paren s in_paren ~open_ ~close { cur; status; lines } =
   | _ -> None
 
 let try_em = try_paren "*" InEm ~open_:EmOpen ~close:EmClose
-
 let try_strong = try_paren "**" InStrong ~open_:StrongOpen ~close:StrongClose
 
 let try_em_strong =
