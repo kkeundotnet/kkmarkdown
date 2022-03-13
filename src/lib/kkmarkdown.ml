@@ -440,7 +440,7 @@ and trans_spans_of_line ~unsafe line = trans_spans ~unsafe [ line ]
 (* Parse blocks *)
 
 let try_hr =
-  let re = Str.regexp "***+[ \t]*$" in
+  let re = Str.regexp "\\*\\*\\*+[ \t]*$" in
   function
   | line :: lines when Str.string_match re line 0 -> Some (Hr, lines)
   | _ -> None
