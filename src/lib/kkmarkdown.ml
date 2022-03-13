@@ -239,7 +239,7 @@ end = struct
 
   (* ![alt](link) {.class1 .class2} *)
   let img =
-    let re = Str.regexp "!\\[\\(.*\\)\\](\\(.*\\)) *{\\(.*\\)}" in
+    let re = Str.regexp "!\\[\\(.*\\)\\](\\(.*\\))[ \t]*{\\(.*\\)}[ \t]*$" in
     function
     | line :: lines when Str.string_match re line 0 ->
         let alt = Str.matched_group 1 line |> String.trim in
@@ -250,7 +250,7 @@ end = struct
 
   (* ``` {.class1 .class2} *)
   let code_block =
-    let re = Str.regexp "\\(```+\\)[ \t]+{\\(.*\\)}" in
+    let re = Str.regexp "\\(```+\\)[ \t]*{\\(.*\\)}[ \t]*$" in
     function
     | line :: lines when Str.string_match re line 0 ->
         let code_block_bound = Str.matched_group 1 line in
@@ -267,11 +267,14 @@ end = struct
     | _ -> None
 
   let gen_inline_html ~tag =
-    let re = Str.regexp ("<" ^ tag ^ "[ >]") in
+    let re = Str.regexp ("<[ \t]*" ^ tag ^ "[ >]") in
     function
     | line :: lines as all when Str.string_match re line 0 ->
         let inline_html, lines =
-          match split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">")) with
+          match
+            split_by_first lines
+              ~f:(String.equal ("</[ \t]*" ^ tag ^ "[ \t]*>"))
+          with
           | None -> (all, [])
           | Some (div_body, div_close, lines) ->
               (line :: (div_body @ [ div_close ]), lines)
