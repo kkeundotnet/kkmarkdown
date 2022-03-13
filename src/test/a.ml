@@ -28,7 +28,10 @@ let test_a () =
     {|woo <http://kkeun.net> woo|};
   check "a" {|<p>&lt;javascript:void(0)&gt;</p>|} {|<javascript:void(0)>|};
   check "a" {|<p>&lt;&quot; onclick=&quot;myattack&gt;</p>|}
-    {|<" onclick="myattack>|}
+    {|<" onclick="myattack>|};
+  check "a"
+    {|<p><a href="https://kkeun.net">kkeun.net</a><a href="https://kkeun.net">kkeun.net</a></p>|}
+    {|<https://kkeun.net><https://kkeun.net>|}
 
 let test_br () =
   check "br" {|<p>hello<br>
@@ -364,7 +367,11 @@ let test_no_unsafe_a () =
 
 let test_unsafe_a () =
   unsafe_check "unsafe a" {|<p><a href="b">a</a></p>|} {|[a](b)|};
-  unsafe_check "unsafe a" {|<p>Hello <a href="b">a</a>.</p>|} {|Hello [a](b).|}
+  unsafe_check "unsafe a" {|<p>Hello <a href="b">a</a>.</p>|} {|Hello [a](b).|};
+  unsafe_check "unsafe a" {|<p><a href="b">a</a> hello <a href="d">c</a>.</p>|}
+    {|[a](b) hello [c](d).|};
+  unsafe_check "unsafe a" {|<p><a href="b">a</a> hello (d).</p>|}
+    {|[a](b) hello (d).|}
 
 let test_no_unsafe_script () =
   check "no unsafe script" {|<p>&lt;script&gt;

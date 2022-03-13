@@ -290,7 +290,7 @@ end = struct
 
   (* [text](link) *)
   let a =
-    let re = Str.regexp "\\[\\(.*\\)\\](\\(.*\\))" in
+    let re = Str.regexp "\\[\\([^]]*\\)\\](\\([^)]*\\))" in
     fun ~trans_spans_of_line { cur; status; lines } ->
       match lines with
       | line :: _ when Str.string_match re line cur ->
@@ -395,7 +395,7 @@ let try_char_span ({ cur; lines; _ } as cont) =
   | [] -> (NoneSpan, cont)
 
 let try_a =
-  let re = Str.regexp "<\\(https?://[^\"']*\\)>" in
+  let re = Str.regexp "<\\(https?://[^\"'>]*\\)>" in
   fun ({ cur; lines; _ } as cont) ->
     match lines with
     | line :: _ when Str.string_match re line cur ->
