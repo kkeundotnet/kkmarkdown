@@ -21,11 +21,9 @@ for more information.
 |};
   { rss = !rss; unsafe = !unsafe; input_files = List.rev !input_files_rev }
 
-let get_input_from_stdin () = Util.get_input_from_channel stdin
-
 let main { rss; unsafe; input_files } =
   (match input_files with
-  | [] -> Kkmarkdown.trans ~unsafe (get_input_from_stdin ())
+  | [] -> Kkmarkdown.trans_from_stdin ~unsafe ()
   | [ file ] -> Kkmarkdown.trans_from_file ~unsafe file
   | _ -> invalid_arg "Multiple files are given.")
   |> Kkmarkdown.pp ~rss F.std_formatter;

@@ -38,6 +38,17 @@ and t = block list
 
 (* Pretty print *)
 
+let pp_list ?(pp_sep = fun _f -> ()) pp f l =
+  let rec aux = function
+    | [] -> ()
+    | [ x ] -> pp f x
+    | hd :: tl ->
+        pp f hd;
+        pp_sep f;
+        aux tl
+  in
+  aux l
+
 let pp_char f = function
   | '&' -> F.pp_print_string f "&amp;"
   | '<' -> F.pp_print_string f "&lt;"
@@ -49,7 +60,7 @@ let pp_char f = function
 let pp_chars f s = String.iter (pp_char f) s
 
 let pp_classes f classes =
-  List.pp ~pp_sep:(fun f -> F.pp_print_char f ' ') F.pp_print_string f classes
+  pp_list ~pp_sep:(fun f -> F.pp_print_char f ' ') F.pp_print_string f classes
 
 let pp_open ?classes f tag =
   match classes with
@@ -65,7 +76,7 @@ let pp_wrap tag ?classes pp f x =
   pp f x;
   pp_close f tag
 
-let pp_list_with_line f = List.pp ~pp_sep:(fun f -> F.pp_print_char f '\n') f
+let pp_list_with_line f = pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') f
 
 let rec pp_span f = function
   | NoneSpan -> ()
@@ -84,13 +95,13 @@ let rec pp_span f = function
       pp_close f "strong";
       pp_close f "em"
   | CodeSpan code -> pp_wrap "code" (pp_list_with_line pp_chars) f code
-  | A s when String.is_prefix s ~prefix:"https://" ->
-      F.fprintf f {|<a href="%s">%a</a>|} s pp_chars (String.sub_from s 8)
+  | A s when String.starts_with s ~prefix:"https://" ->
+      F.fprintf f {|<a href="%s">%a</a>|} s pp_chars (Str.string_after s 8)
   | A s -> F.fprintf f {|<a href="%s">%a</a>|} s pp_chars s
   | UnsafeA { spans; link } ->
       F.fprintf f {|<a href="%s">%a</a>|} link pp_span_list spans
 
-and pp_span_list f = List.pp pp_span f
+and pp_span_list f = pp_list pp_span f
 
 let rec pp_block ~rss f = function
   | P sps -> pp_wrap "p" pp_span_list f sps
@@ -113,8 +124,8 @@ let rec pp_block ~rss f = function
       pp_wrap "pre" (pp_wrap_code (pp_list_with_line pp_chars)) f cb
   | UnsafeInlineHtml lines ->
       if not rss then
-        List.pp
-          ~pp_sep:(fun f -> F.pp_print_newline f ())
+        pp_list
+          ~pp_sep:(fun f -> F.pp_print_char f '\n')
           F.pp_print_string f lines
   | UnsafeImg { alt; link; classes } ->
       let pp_class_prop f classes =
@@ -131,9 +142,8 @@ and pp_li ~rss f = function
 
 and pp ?(rss = false) f = pp_list_with_line (pp_block ~rss) f
 
-(* >>= *)
+(* >=> *)
 
-let gen_bind x f g = match f with Some _ as r -> r | None -> g x
 let ( >=> ) f g x = match f x with Some _ as r -> r | None -> g x
 
 (* Continuation status *)
@@ -143,6 +153,51 @@ type status = InEm | InStrong | InEmStrong
 let status_equal x y = x = y
 
 type spans_cont = { cur : int; status : status list; lines : string list }
+
+(* Local utils *)
+
+let get_input_from_channel ch =
+  let buf = Buffer.create 256 in
+  (try
+     while true do
+       Buffer.add_char buf (input_char ch)
+     done
+   with End_of_file -> ());
+  Buffer.contents buf
+
+let is_empty_line =
+  let re = Str.regexp "[ \t]*$" in
+  fun line -> Str.string_match re line 0
+
+let split_by_first x ~f =
+  let rec aux x ~f rev_l =
+    match x with
+    | [] -> None
+    | hd :: tl ->
+        if f hd then Some (List.rev rev_l, hd, tl) else aux tl ~f (hd :: rev_l)
+  in
+  aux x ~f []
+
+let split_by_first_char c lines =
+  let rec aux lines rev_l =
+    match lines with
+    | [] -> None
+    | line :: lines -> (
+        match String.index_opt line c with
+        | None -> aux lines (line :: rev_l)
+        | Some cur ->
+            Some (List.rev (String.sub line 0 cur :: rev_l), cur, line :: lines)
+        )
+  in
+  aux lines []
+
+let trim x =
+  let rec aux rev = function
+    | [] -> rev
+    | hd :: tl ->
+        if is_empty_line hd then aux rev tl else List.rev_append tl (hd :: rev)
+  in
+  aux [] x |> aux []
 
 (* Parse unsafe spans/blocks *)
 
@@ -172,71 +227,56 @@ end = struct
   let try_span = try_
   let try_block = try_
 
-  let read_classes s =
-    String.split_on_char ' ' s
-    |> List.filter_map (fun class_ ->
-           if String.length class_ >= 2 && Char.equal class_.[0] '.' then
-             Some (String.sub_from class_ 1)
-           else None)
+  let read_classes =
+    let re_space = Str.regexp "[ \t]+" in
+    let re_class = Str.regexp "\\.\\(.+\\)" in
+    fun s ->
+      String.trim s |> Str.split re_space
+      |> List.filter_map (fun class_ ->
+             if Str.string_match re_class class_ 0 then
+               Some (Str.matched_group 1 class_)
+             else None)
 
   (* ![alt](link) {.class1 .class2} *)
-  let img = function
-    | line :: lines
-      when String.length line >= 7
-           && Char.equal line.[0] '!'
-           && Char.equal line.[1] '['
-           && Char.equal line.[String.length line - 1] '}' ->
-        let* cur1 = String.index_sub_opt line ~sub:"](" in
-        let* cur2 = String.index_sub_opt line ~sub:") {" in
-        if cur1 < cur2 then
-          let alt = String.sub line 2 (cur1 - 2) |> String.trim in
-          let link =
-            String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) |> String.trim
-          in
-          let cur = cur2 + 3 in
-          let classes =
-            String.sub line cur (String.length line - cur - 1) |> read_classes
-          in
-          Some (UnsafeImg { alt; link; classes }, lines)
-        else None
+  let img =
+    let re = Str.regexp "!\\[\\(.*\\)\\](\\(.*\\)) *{\\(.*\\)}" in
+    function
+    | line :: lines when Str.string_match re line 0 ->
+        let alt = Str.matched_group 1 line |> String.trim in
+        let link = Str.matched_group 2 line |> String.trim in
+        let classes = Str.matched_group 3 line |> read_classes in
+        Some (UnsafeImg { alt; link; classes }, lines)
     | _ -> None
 
   (* ``` {.class1 .class2} *)
-  let code_block = function
-    | line :: lines
-      when String.length line >= 6
-           && Char.equal line.[0] '`'
-           && Char.equal line.[1] '`'
-           && Char.equal line.[2] '`'
-           && Char.equal line.[String.length line - 1] '}' -> (
-        let+ cur = String.index_sub_opt line ~sub:"` {" in
-        let code_block_bound = String.sub line 0 (cur + 1) in
-        let cur = cur + 3 in
-        let classes =
-          String.sub line cur (String.length line - cur - 1) |> read_classes
+  let code_block =
+    let re = Str.regexp "\\(```+\\)[ \t]+{\\(.*\\)}" in
+    function
+    | line :: lines when Str.string_match re line 0 ->
+        let code_block_bound = Str.matched_group 1 line in
+        let classes = Str.matched_group 2 line |> read_classes in
+        let cb, lines =
+          match
+            split_by_first lines ~f:(fun s ->
+                String.equal (String.trim s) code_block_bound)
+          with
+          | None -> (lines, [])
+          | Some (cb, _, lines) -> (cb, lines)
         in
-        match List.split_by_first lines ~f:(String.equal code_block_bound) with
-        | None -> (UnsafeCodeBlock { cb = lines; classes }, [])
-        | Some (cb, _, lines) -> (UnsafeCodeBlock { cb; classes }, lines))
+        Some (UnsafeCodeBlock { cb; classes }, lines)
     | _ -> None
 
   let gen_inline_html ~tag =
-    let tag_len = String.length tag in
+    let re = Str.regexp ("<" ^ tag ^ "[ >]") in
     function
-    | line :: lines as all
-      when String.is_prefix line ~prefix:("<" ^ tag)
-           && 1 + tag_len < String.length line
-           && (Char.equal line.[1 + tag_len] ' '
-              || Char.equal line.[1 + tag_len] '>') ->
-        Some
-          (match
-             List.split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">"))
-           with
-          | None -> (UnsafeInlineHtml all, [])
+    | line :: lines as all when Str.string_match re line 0 ->
+        let inline_html, lines =
+          match split_by_first lines ~f:(String.equal ("</" ^ tag ^ ">")) with
+          | None -> (all, [])
           | Some (div_body, div_close, lines) ->
-              ( UnsafeInlineHtml
-                  (line :: List.append_tailrec div_body [ div_close ]),
-                lines ))
+              (line :: (div_body @ [ div_close ]), lines)
+        in
+        Some (UnsafeInlineHtml inline_html, lines)
     | _ -> None
 
   (* <div> *)
@@ -246,137 +286,90 @@ end = struct
   let script = gen_inline_html ~tag:"script"
 
   (* [text](link) *)
-  let a ~trans_spans_of_line { cur; status; lines } =
-    match lines with
-    | line :: _ when cur + 3 < String.length line && Char.equal line.[cur] '['
-      ->
-        let* cur1 = String.index_sub_from_opt (cur + 1) line ~sub:"](" in
-        let* cur2 = String.index_from_opt line (cur1 + 2) ')' in
-        let text = String.sub line (cur + 1) (cur1 - (cur + 1)) in
-        let link = String.sub line (cur1 + 2) (cur2 - (cur1 + 2)) in
-        Some
-          ( UnsafeA { spans = trans_spans_of_line text; link },
-            { cur = cur2 + 1; status; lines } )
-    | _ -> None
+  let a =
+    let re = Str.regexp "\\[\\(.*\\)\\](\\(.*\\))" in
+    fun ~trans_spans_of_line { cur; status; lines } ->
+      match lines with
+      | line :: _ when Str.string_match re line cur ->
+          let text = Str.matched_group 1 line in
+          let link = Str.matched_group 2 line |> String.trim in
+          Some
+            ( UnsafeA { spans = trans_spans_of_line text; link },
+              { cur = Str.match_end (); status; lines } )
+      | _ -> None
 end
 
 (* Parse spans *)
 
 let try_escape_char =
-  let is_escape_char = function
-    | '\\' | '`' | '*' | '_' | '{' | '}' | '[' | ']' | '(' | ')' | '#' | '+'
-    | '-' | '.' | '!' ->
-        true
-    | _ -> false
-  in
+  let re = Str.regexp "\\\\\\([]\\\\`\\*_{}[()#\\+\\.!-]\\)" in
   fun ({ cur; lines; _ } as cont) ->
     match lines with
-    | line :: _
-      when cur + 1 < String.length line
-           && Char.equal line.[cur] '\\'
-           && is_escape_char line.[cur + 1] ->
-        Some (CharSpan line.[cur + 1], { cont with cur = cur + 2 })
+    | line :: _ when Str.string_match re line cur ->
+        let c = Str.matched_group 1 line in
+        Some (CharSpan c.[0], { cont with cur = Str.match_end () })
     | _ -> None
 
 let try_unicode =
-  let get_unicode_size cur s =
-    if
-      (* &#xhhhh; *)
-      cur + 7 < String.length s
-      && Char.equal s.[cur] '&'
-      && Char.equal s.[cur + 1] '#'
-      && Char.equal s.[cur + 2] 'x'
-      && Char.is_hexa s.[cur + 3]
-      && Char.is_hexa s.[cur + 4]
-      && Char.is_hexa s.[cur + 5]
-      && Char.is_hexa s.[cur + 6]
-      && Char.equal s.[cur + 7] ';'
-    then Some 8
-    else if
-      (* &#xhhhhh; *)
-      cur + 8 < String.length s
-      && Char.equal s.[cur] '&'
-      && Char.equal s.[cur + 1] '#'
-      && Char.equal s.[cur + 2] 'x'
-      && Char.is_hexa s.[cur + 3]
-      && Char.is_hexa s.[cur + 4]
-      && Char.is_hexa s.[cur + 5]
-      && Char.is_hexa s.[cur + 6]
-      && Char.is_hexa s.[cur + 7]
-      && Char.equal s.[cur + 8] ';'
-    then Some 9
-    else if
-      (* &#nnnn; *)
-      cur + 6 < String.length s
-      && Char.equal s.[cur] '&'
-      && Char.equal s.[cur + 1] '#'
-      && Char.is_num s.[cur + 2]
-      && Char.is_num s.[cur + 3]
-      && Char.is_num s.[cur + 4]
-      && Char.is_num s.[cur + 5]
-      && Char.equal s.[cur + 6] ';'
-    then Some 7
+  (* &#xhhhh; or &#xhhhhh; *)
+  let re_hex =
+    Str.regexp "&#x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]?;"
+  in
+  (* &#nnnn; *)
+  let re_dec = Str.regexp "&#[0-9][0-9][0-9][0-9];" in
+  let get_unicode cur s =
+    if Str.string_match re_hex s cur || Str.string_match re_dec s cur then
+      Some (Str.matched_string s, Str.match_end ())
     else None
   in
   fun ({ cur; lines; _ } as cont) ->
     match lines with
     | line :: _ -> (
-        match get_unicode_size cur line with
+        match get_unicode cur line with
         | None -> None
-        | Some n ->
-            Some
-              (UnicodeSpan (String.sub line cur n), { cont with cur = cur + n })
-        )
+        | Some (unicode, cur) -> Some (UnicodeSpan unicode, { cont with cur }))
     | [] -> None
 
-let try_paren s in_paren ~open_ ~close { cur; status; lines } =
+let try_paren re in_paren ~open_ ~close { cur; status; lines } =
   match lines with
-  | line :: _ when String.is_sub cur line ~sub:s -> (
-      let cur = cur + String.length s in
+  | line :: _ when Str.string_match re line cur -> (
+      let cur = Str.match_end () in
       match status with
       | hd :: tl when status_equal hd in_paren ->
           Some (close, { cur; status = tl; lines })
       | _ -> Some (open_, { cur; status = in_paren :: status; lines }))
   | _ -> None
 
-let try_em = try_paren "*" InEm ~open_:EmOpen ~close:EmClose
-let try_strong = try_paren "**" InStrong ~open_:StrongOpen ~close:StrongClose
+let try_em =
+  let re = Str.regexp "\\*" in
+  try_paren re InEm ~open_:EmOpen ~close:EmClose
+
+let try_strong =
+  let re = Str.regexp "\\*\\*" in
+  try_paren re InStrong ~open_:StrongOpen ~close:StrongClose
 
 let try_em_strong =
-  try_paren "***" InEmStrong ~open_:EmStrongOpen ~close:EmStrongClose
+  let re = Str.regexp "\\*\\*\\*" in
+  try_paren re InEmStrong ~open_:EmStrongOpen ~close:EmStrongClose
 
-let try_code =
-  let split_by_first_char c lines =
-    let rec split lines rev =
-      match lines with
-      | [] -> None
-      | line :: lines -> (
-          match String.index_opt line c with
-          | None -> split lines (line :: rev)
-          | Some cur ->
-              let code = String.sub line 0 cur in
-              Some (List.rev (code :: rev), cur, line :: lines))
-    in
-    split lines []
-  in
+let try_code ({ cur; lines; _ } as cont) =
+  match lines with
+  | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
+    -> (
+      let lines = Str.string_after line (cur + 1) :: lines in
+      match split_by_first_char '`' lines with
+      | None -> Some (CodeSpan lines, { cont with cur = 0; lines = [] })
+      | Some (code, cur, lines) ->
+          Some (CodeSpan code, { cont with cur = cur + 1; lines }))
+  | _ -> None
+
+let try_br =
+  let re = Str.regexp "  +$" in
   fun ({ cur; lines; _ } as cont) ->
     match lines with
-    | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
-      -> (
-        let lines = String.sub_from line (cur + 1) :: lines in
-        match split_by_first_char '`' lines with
-        | None -> Some (CodeSpan lines, { cont with cur = 0; lines = [] })
-        | Some (code, cur, lines) ->
-            Some (CodeSpan code, { cont with cur = cur + 1; lines }))
+    | line :: _ when Str.string_match re line cur ->
+        Some (Br, { cont with cur = Str.match_end () })
     | _ -> None
-
-let try_br ({ cur; lines; _ } as cont) =
-  match lines with
-  | line :: _
-    when cur + 1 < String.length line
-         && String.forall_from cur line ~f:(Char.equal ' ') ->
-      Some (Br, { cont with cur = String.length line })
-  | _ -> None
 
 let try_char_span ({ cur; lines; _ } as cont) =
   match lines with
@@ -391,39 +384,20 @@ let try_char_span ({ cur; lines; _ } as cont) =
           else n
         in
         let cur' = read_chars (cur + 1) in
-        Some
-          ( CharsSpan (String.sub line cur (cur' - cur)),
-            { cont with cur = cur' } )
+
+        (CharsSpan (String.sub line cur (cur' - cur)), { cont with cur = cur' })
       else
         let r = match lines' with [] -> NoneSpan | _ :: _ -> CharSpan '\n' in
-        Some (r, { cont with cur = 0; lines = lines' })
-  | [] -> Some (NoneSpan, cont)
+        (r, { cont with cur = 0; lines = lines' })
+  | [] -> (NoneSpan, cont)
 
 let try_a =
-  let rec read_path_chars cur line =
-    if cur < String.length line then
-      let c = line.[cur] in
-      if Char.equal c '>' then Some cur
-      else if Char.equal c '"' || Char.equal c '\'' then None
-      else read_path_chars (cur + 1) line
-    else None
-  in
-  let read_path cur line =
-    if String.is_sub cur line ~sub:"https://" then
-      read_path_chars (cur + 8) line
-    else if String.is_sub cur line ~sub:"http://" then
-      read_path_chars (cur + 7) line
-    else None
-  in
+  let re = Str.regexp "<\\(https?://[^\"']*\\)>" in
   fun ({ cur; lines; _ } as cont) ->
     match lines with
-    | line :: _ when cur < String.length line && Char.equal line.[cur] '<' -> (
-        let start = cur + 1 in
-        match read_path start line with
-        | Some end_ ->
-            let link = String.sub line start (end_ - start) in
-            Some (A link, { cont with cur = end_ + 1 })
-        | None -> None)
+    | line :: _ when Str.string_match re line cur ->
+        let link = Str.matched_group 1 line in
+        Some (A link, { cont with cur = Str.match_end () })
     | _ -> None
 
 let rec trans_spans ~unsafe =
@@ -437,25 +411,27 @@ let rec trans_spans ~unsafe =
     match lines with
     | [] -> close_status rev status |> List.rev
     | line :: _ ->
-        let ( >>= ) = gen_bind cont in
-        (if cur < String.length line then
-         cont
-         |>
-         match line.[cur] with
-         | '[' ->
-             Unsafe.(
-               try_span ~unsafe
-                 (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
-         | '\\' -> try_escape_char
-         | '&' -> try_unicode
-         | '*' -> try_em_strong >=> try_strong >=> try_em
-         | '`' -> try_code
-         | ' ' -> try_br
-         | '<' -> try_a
-         | _ -> fun _cont -> None
-        else None)
-        >>= try_char_span |> Option.value_exn
-        |> fun (span, cont) -> (trans [@tailcall]) cont (span :: rev)
+        let res =
+          if cur < String.length line then
+            match line.[cur] with
+            | '[' ->
+                Unsafe.(
+                  try_span ~unsafe
+                    (a ~trans_spans_of_line:(trans_spans_of_line ~unsafe)))
+                  cont
+            | '\\' -> try_escape_char cont
+            | '&' -> try_unicode cont
+            | '*' -> (try_em_strong >=> try_strong >=> try_em) cont
+            | '`' -> try_code cont
+            | ' ' -> try_br cont
+            | '<' -> try_a cont
+            | _ -> None
+          else None
+        in
+        let span, cont =
+          match res with Some r -> r | None -> try_char_span cont
+        in
+        (trans [@tailcall]) cont (span :: rev)
   in
   fun lines -> trans { cur = 0; status = []; lines } []
 
@@ -463,112 +439,61 @@ and trans_spans_of_line ~unsafe line = trans_spans ~unsafe [ line ]
 
 (* Parse blocks *)
 
-let is_empty_line line =
-  String.forall line ~f:(function ' ' | '\t' -> true | _ -> false)
-
-let is_ul_indent_start line = String.is_prefix line ~prefix:"* "
-
-let is_ol_indent_start_3 line =
-  String.length line >= 3
-  && Char.is_num line.[0]
-  && Char.equal line.[1] '.'
-  && Char.equal line.[2] ' '
-
-let is_ol_indent_start_4 line =
-  String.length line >= 4
-  && Char.is_num line.[0]
-  && Char.is_num line.[1]
-  && Char.equal line.[2] '.'
-  && Char.equal line.[3] ' '
-
-let is_ol_indent_start line =
-  is_ol_indent_start_3 line || is_ol_indent_start_4 line
-
-let remove_ul_indent line =
-  if
-    String.is_prefix line ~prefix:"*   " || String.is_prefix line ~prefix:"    "
-  then String.sub_from line 4
-  else if
-    String.is_prefix line ~prefix:"*  " || String.is_prefix line ~prefix:"   "
-  then String.sub_from line 3
-  else if
-    String.is_prefix line ~prefix:"* " || String.is_prefix line ~prefix:"  "
-  then String.sub_from line 2
-  else if String.is_prefix line ~prefix:" " then String.sub_from line 1
-  else line
-
-let remove_ol_indent line =
-  if
-    is_ol_indent_start_4 line
-    || String.length line >= 4
-       && is_ol_indent_start_3 line
-       && Char.equal line.[3] ' '
-    || String.is_prefix line ~prefix:"    "
-  then String.sub_from line 4
-  else if is_ol_indent_start_3 line || String.is_prefix line ~prefix:"   " then
-    String.sub_from line 3
-  else if String.is_prefix line ~prefix:"  " then String.sub_from line 2
-  else if String.is_prefix line ~prefix:" " then String.sub_from line 1
-  else line
-
 let try_hr =
-  let is_hr line =
-    String.length line >= 3 && String.forall line ~f:(Char.equal '*')
-  in
-  function line :: lines when is_hr line -> Some (Hr, lines) | _ -> None
-
-let try_header_by_sharp =
-  let try_header_line ~unsafe line =
-    if String.is_prefix line ~prefix:"# " then
-      Some (H1 (trans_spans_of_line ~unsafe (String.sub_from line 2)))
-    else if String.is_prefix line ~prefix:"## " then
-      Some (H2 (trans_spans_of_line ~unsafe (String.sub_from line 3)))
-    else if String.is_prefix line ~prefix:"### " then
-      Some (H3 (trans_spans_of_line ~unsafe (String.sub_from line 4)))
-    else if String.is_prefix line ~prefix:"#### " then
-      Some (H4 (trans_spans_of_line ~unsafe (String.sub_from line 5)))
-    else if String.is_prefix line ~prefix:"##### " then
-      Some (H5 (trans_spans_of_line ~unsafe (String.sub_from line 6)))
-    else if String.is_prefix line ~prefix:"###### " then
-      Some (H6 (trans_spans_of_line ~unsafe (String.sub_from line 7)))
-    else None
-  in
-  fun ~unsafe -> function
-    | line :: lines ->
-        try_header_line ~unsafe line
-        |> Option.map (fun header -> (header, lines))
-    | [] -> None
-
-let try_header_by_dash ~unsafe = function
-  | line1 :: line2 :: lines
-    when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '=') ->
-      Some (H1 (trans_spans_of_line ~unsafe line1), lines)
-  | line1 :: line2 :: lines
-    when String.length line2 >= 3 && String.forall line2 ~f:(Char.equal '-') ->
-      Some (H2 (trans_spans_of_line ~unsafe line1), lines)
+  let re = Str.regexp "***+[ \t]*$" in
+  function
+  | line :: lines when Str.string_match re line 0 -> Some (Hr, lines)
   | _ -> None
 
+let try_header_by_sharp =
+  let re = Str.regexp "\\(#+\\) " in
+  fun ~unsafe -> function
+    | line :: lines when Str.string_match re line 0 -> (
+        let title () =
+          Str.string_after line (Str.match_end ())
+          |> trans_spans_of_line ~unsafe
+        in
+        match Str.matched_group 1 line |> String.length with
+        | 1 -> Some (H1 (title ()), lines)
+        | 2 -> Some (H2 (title ()), lines)
+        | 3 -> Some (H3 (title ()), lines)
+        | 4 -> Some (H4 (title ()), lines)
+        | 5 -> Some (H5 (title ()), lines)
+        | 6 -> Some (H6 (title ()), lines)
+        | _ -> None)
+    | _ -> None
+
+let try_header_by_dash =
+  let re1 = Str.regexp "===+[ \t]*$" in
+  let re2 = Str.regexp "---+[ \t]*$" in
+  fun ~unsafe -> function
+    | line1 :: line2 :: lines when Str.string_match re1 line2 0 ->
+        Some (H1 (trans_spans_of_line ~unsafe line1), lines)
+    | line1 :: line2 :: lines when Str.string_match re2 line2 0 ->
+        Some (H2 (trans_spans_of_line ~unsafe line1), lines)
+    | _ -> None
+
 let try_code_block_by_bound =
-  let is_code_block_bound line =
-    String.length line >= 3
-    && (String.forall line ~f:(Char.equal '`')
-       || String.forall line ~f:(Char.equal '~'))
-  in
+  let re1 = Str.regexp "```+[ \t]*$" in
+  let re2 = Str.regexp "~~~+[ \t]*$" in
   function
-  | line :: lines when is_code_block_bound line -> (
-      match List.split_by_first lines ~f:(String.equal line) with
+  | line :: lines
+    when Str.string_match re1 line 0 || Str.string_match re2 line 0 -> (
+      let bound = Str.matched_string line |> String.trim in
+      match
+        split_by_first lines ~f:(fun s -> String.equal (String.trim s) bound)
+      with
       | None -> Some (CodeBlock lines, [])
       | Some (cb, _, lines) -> Some (CodeBlock cb, lines))
   | _ -> None
 
 let try_code_block_by_indent =
-  let is_code_block_indent line = String.is_prefix line ~prefix:"    " in
-  let remove_indent lines = List.map (fun s -> String.sub_from s 4) lines in
+  let is_code_block_indent line = String.starts_with line ~prefix:"    " in
+  let remove_indent lines = List.map (fun s -> Str.string_after s 4) lines in
   function
   | line :: lines as x when is_code_block_indent line -> (
       match
-        List.split_by_first lines ~f:(fun line ->
-            not (is_code_block_indent line))
+        split_by_first lines ~f:(fun line -> not (is_code_block_indent line))
       with
       | None -> Some (CodeBlock (remove_indent x), [])
       | Some (cb, cont_line, cont_lines) ->
@@ -578,19 +503,47 @@ let try_code_block_by_indent =
 
 let try_p ~unsafe lines =
   let p, lines =
-    match List.split_by_first lines ~f:is_empty_line with
+    match split_by_first lines ~f:is_empty_line with
     | None -> (lines, [])
     | Some (p, _, lines) -> (p, lines)
   in
-  Some (P (trans_spans ~unsafe p), lines)
+  (P (trans_spans ~unsafe p), lines)
 
 let block_max_depth = 4
+let re_ul = Str.regexp "* \\(  \\| \\|\\)"
+let re_ol = Str.regexp "[0-9]\\(.  ?\\|[0-9]. \\)"
+let is_xl_item_start re_xl line = Str.string_match re_xl line 0
+let is_ul_item_start = is_xl_item_start re_ul
+let is_ol_item_start = is_xl_item_start re_ol
 
-let rec gen_try_xl constructor is_indent_start remove_indent =
-  let trans_xl_elems ~unsafe ~depth lines =
-    let groups =
-      List.strip lines ~f:is_empty_line |> List.group ~f:is_indent_start
+let remove_xl_indent =
+  let re_spaces_upto_4 = Str.regexp "    \\|   \\|  \\| " in
+  fun re_xl line ->
+    if Str.string_match re_xl line 0 || Str.string_match re_spaces_upto_4 line 0
+    then Str.string_after line (Str.match_end ())
+    else line
+
+let remove_ul_indent = remove_xl_indent re_ul
+let remove_ol_indent = remove_xl_indent re_ol
+
+let rec gen_try_xl constructor is_item_start remove_indent =
+  let divide_groups =
+    let rec aux l rev_g rev_gs =
+      match (l, rev_g) with
+      | [], None -> List.rev rev_gs
+      | [], Some rev_g -> List.rev (List.rev rev_g :: rev_gs)
+      | hd :: tl, None -> aux tl (Some [ hd ]) rev_gs
+      | hd :: tl, Some rev_g ->
+          let rev_g, rev_gs =
+            if is_item_start hd then ([ hd ], List.rev rev_g :: rev_gs)
+            else (hd :: rev_g, rev_gs)
+          in
+          aux tl (Some rev_g) rev_gs
     in
+    fun x -> aux x None []
+  in
+  let trans_xl_elems ~unsafe ~depth lines =
+    let groups = trim lines |> divide_groups in
     let trans_elem =
       if List.exists (List.exists is_empty_line) groups then fun lines ->
         LiP (trans_from_lines ~unsafe ~depth lines)
@@ -598,9 +551,9 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     in
     List.map (fun group -> List.map remove_indent group |> trans_elem) groups
   in
-  let is_xl_indent line =
-    is_indent_start line
-    || String.is_prefix line ~prefix:" "
+  let is_xl_line line =
+    is_item_start line
+    || String.starts_with line ~prefix:" "
     || is_empty_line line
   in
   fun ~unsafe ~depth lines ->
@@ -608,11 +561,10 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
     else
       let depth = depth + 1 in
       match lines with
-      | line :: lines' when is_indent_start line ->
+      | line :: lines' when is_item_start line ->
           let xl_lines, cont_lines =
             match
-              List.split_by_first lines' ~f:(fun line ->
-                  not (is_xl_indent line))
+              split_by_first lines' ~f:(fun line -> not (is_xl_line line))
             with
             | None -> (lines, [])
             | Some (xl, cont_line, cont_lines) ->
@@ -624,35 +576,32 @@ let rec gen_try_xl constructor is_indent_start remove_indent =
 and try_ul ~unsafe ~depth lines =
   gen_try_xl
     (fun x -> Ul x)
-    is_ul_indent_start remove_ul_indent ~unsafe ~depth lines
+    is_ul_item_start remove_ul_indent ~unsafe ~depth lines
 
 and try_ol ~unsafe ~depth lines =
   gen_try_xl
     (fun x -> Ol x)
-    is_ol_indent_start remove_ol_indent ~unsafe ~depth lines
+    is_ol_item_start remove_ol_indent ~unsafe ~depth lines
 
 and try_quote =
-  let is_quote_indent line = String.is_prefix line ~prefix:"> " in
-  let remove_indent lines =
-    let remove_indent line =
-      if
-        String.is_prefix line ~prefix:"> " || String.is_prefix line ~prefix:"  "
-      then String.sub_from line 2
-      else if
-        String.is_prefix line ~prefix:">" || String.is_prefix line ~prefix:" "
-      then String.sub_from line 1
-      else line
-    in
-    List.map remove_indent lines
+  let remove_indent =
+    let re = Str.regexp "> ?\\|  ?" in
+    fun lines ->
+      let remove_indent line =
+        if Str.string_match re line 0 then
+          Str.string_after line (Str.match_end ())
+        else line
+      in
+      List.map remove_indent lines
   in
   fun ~unsafe ~depth lines ->
     if depth > block_max_depth then None
     else
       let depth = depth + 1 in
       match lines with
-      | line :: lines' when is_quote_indent line ->
+      | line :: lines' when String.starts_with line ~prefix:"> " ->
           let quote_lines, cont_lines =
-            match List.split_by_first lines' ~f:is_empty_line with
+            match split_by_first lines' ~f:is_empty_line with
             | None -> (lines, [])
             | Some (quote, _, lines) -> (line :: quote, lines)
           in
@@ -664,41 +613,55 @@ and try_quote =
 
 and trans_from_lines ~unsafe ~depth lines =
   let rec trans lines rev =
-    match List.remove_head lines ~f:is_empty_line with
+    match trim lines with
     | [] -> List.rev rev
     | line :: _ as lines ->
-        let ( >>= ) = gen_bind lines in
-        lines
-        |> (if 0 < String.length line then
-            match line.[0] with
-            | '!' -> Unsafe.(try_block ~unsafe img)
-            | '`' ->
-                Unsafe.(try_block ~unsafe code_block)
-                >=> try_code_block_by_bound
-            | '~' -> try_code_block_by_bound
-            | ' ' -> try_code_block_by_indent
-            | '<' ->
-                Unsafe.(try_block ~unsafe div)
-                >=> Unsafe.(try_block ~unsafe script)
-            | '*' -> try_hr >=> try_ul ~unsafe ~depth
-            | '#' -> try_header_by_sharp ~unsafe
-            | '>' -> try_quote ~unsafe ~depth
-            | c when Char.is_num c -> try_ol ~unsafe ~depth
-            | _ -> fun _lines -> None
-           else fun _lines -> None)
-        >>= try_header_by_dash ~unsafe >>= try_p ~unsafe |> Option.value_exn
-        |> fun (r, lines) -> (trans [@tailcall]) lines (r :: rev)
+        let res =
+          (if 0 < String.length line then
+           match line.[0] with
+           | '!' -> Unsafe.(try_block ~unsafe img) lines
+           | '`' ->
+               (Unsafe.(try_block ~unsafe code_block)
+               >=> try_code_block_by_bound)
+                 lines
+           | '~' -> try_code_block_by_bound lines
+           | ' ' -> try_code_block_by_indent lines
+           | '<' ->
+               (Unsafe.(try_block ~unsafe div)
+               >=> Unsafe.(try_block ~unsafe script))
+                 lines
+           | '*' -> (try_hr >=> try_ul ~unsafe ~depth) lines
+           | '#' -> try_header_by_sharp ~unsafe lines
+           | '>' -> try_quote ~unsafe ~depth lines
+           | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ->
+               try_ol ~unsafe ~depth lines
+           | _ -> None
+          else None)
+          |> function
+          | Some _ as r -> r
+          | None -> try_header_by_dash ~unsafe lines
+        in
+        let r, lines =
+          match res with Some res -> res | None -> try_p ~unsafe lines
+        in
+        (trans [@tailcall]) lines (r :: rev)
   in
   trans lines []
 
+let split_to_lines =
+  let re = Str.regexp "\r?\n" in
+  fun s -> Str.split_delim re s
+
 let trans ?(unsafe = false) s =
-  String.split_to_lines s |> trans_from_lines ~unsafe ~depth:0
+  split_to_lines s |> trans_from_lines ~unsafe ~depth:0
 
 let trans_from_file ?unsafe file =
   let ch = open_in file in
-  let input = Util.get_input_from_channel ch in
+  let input = get_input_from_channel ch in
   close_in_noerr ch;
   trans ?unsafe input
+
+let trans_from_stdin ?unsafe () = trans ?unsafe (get_input_from_channel stdin)
 
 let trans_to_string ?unsafe ?rss s =
   trans ?unsafe s |> F.asprintf "%a" (pp ?rss)
