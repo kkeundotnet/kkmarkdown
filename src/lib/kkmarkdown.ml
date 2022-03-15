@@ -267,13 +267,13 @@ end = struct
     | _ -> None
 
   let gen_inline_html ~tag =
-    let re = Str.regexp ("<[ \t]*" ^ tag ^ "[ >]") in
+    let re_start = Str.regexp ("<[ \t]*" ^ tag ^ "[ >]") in
+    let re_end = Str.regexp ("</[ \t]*" ^ tag ^ "[ \t]*>[ \t]*$") in
     function
-    | line :: lines as all when Str.string_match re line 0 ->
+    | line :: lines as all when Str.string_match re_start line 0 ->
         let inline_html, lines =
           match
-            split_by_first lines
-              ~f:(String.equal ("</[ \t]*" ^ tag ^ "[ \t]*>"))
+            split_by_first lines ~f:(fun line -> Str.string_match re_end line 0)
           with
           | None -> (all, [])
           | Some (div_body, div_close, lines) ->

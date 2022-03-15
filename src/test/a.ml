@@ -351,7 +351,16 @@ contents
 </div>|}
     {|<div class="a">
 contents
-</div>|}
+</div>|};
+  unsafe_check "unsafe div" {|<div class="a">
+contents
+</div>
+<p>Hello.</p>|}
+    {|<div class="a">
+contents
+</div>
+
+Hello.|}
 
 let test_rss_div () =
   rss_check "rss div" {||} {|<div>
