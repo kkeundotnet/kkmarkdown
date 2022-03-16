@@ -248,6 +248,8 @@ let test_quote () =
 >
 >     def|}
 
+let test_strike () = check "strike" {|<p>a<s>b</s>c</p>|} {|a~~b~~c|}
+
 let test_strong () =
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc**|};
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
@@ -313,7 +315,11 @@ code
     {|<pre><code class="c1 c2">code</code></pre>|}
     {|``` {  .c1 .c2  }
 code
-```|}
+```|};
+  unsafe_check "unsafe code block" {|<pre><code class="c">code</code></pre>|}
+    {|~~~ {.c}
+code
+~~~|}
 
 let test_rss_code_block () =
   rss_check "rss code block" {|<pre><code>code</code></pre>|}
@@ -440,6 +446,7 @@ let tests =
     ("ol", `Quick, test_ol);
     ("p", `Quick, test_p);
     ("quote", `Quick, test_quote);
+    ("strike", `Quick, test_strike);
     ("strong", `Quick, test_strong);
     ("ul", `Quick, test_ul);
     ("unicode", `Quick, test_unicode);

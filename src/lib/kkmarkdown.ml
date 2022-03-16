@@ -12,6 +12,8 @@ type span =
   | StrongClose
   | EmStrongOpen
   | EmStrongClose
+  | StrikeOpen
+  | StrikeClose
   | CodeSpan of string list
   | A of string
   | UnsafeA of { spans : span list; link : string }
@@ -94,6 +96,8 @@ let rec pp_span f = function
   | EmStrongClose ->
       pp_close f "strong";
       pp_close f "em"
+  | StrikeOpen -> pp_open f "s"
+  | StrikeClose -> pp_close f "s"
   | CodeSpan code -> pp_wrap "code" (pp_list_with_line pp_chars) f code
   | A s when String.starts_with s ~prefix:"https://" ->
       F.fprintf f {|<a href="%s">%a</a>|} s pp_chars (Str.string_after s 8)
@@ -148,7 +152,7 @@ let ( >=> ) f g x = match f x with Some _ as r -> r | None -> g x
 
 (* Continuation status *)
 
-type status = InEm | InStrong | InEmStrong
+type status = InEm | InStrong | InEmStrong | InStrike
 
 let status_equal x y = x = y
 
@@ -237,22 +241,32 @@ end = struct
                Some (Str.matched_group 1 class_)
              else None)
 
-  (* ![alt](link) {.class1 .class2} *)
+  (* ![alt](link) or ![alt](link) {.class1 .class2} *)
   let img =
-    let re = Str.regexp "!\\[\\(.*\\)\\](\\(.*\\))[ \t]*{\\(.*\\)}[ \t]*$" in
+    let common = "!\\[\\(.*\\)\\](\\(.*\\))[ \t]*" in
+    let re_without_class = Str.regexp (common ^ "$") in
+    let re_with_class = Str.regexp (common ^ "{\\(.*\\)}[ \t]*$") in
+    let get_alt_link matched_line =
+      ( Str.matched_group 1 matched_line |> String.trim,
+        Str.matched_group 2 matched_line |> String.trim )
+    in
     function
-    | line :: lines when Str.string_match re line 0 ->
-        let alt = Str.matched_group 1 line |> String.trim in
-        let link = Str.matched_group 2 line |> String.trim in
+    | line :: lines when Str.string_match re_without_class line 0 ->
+        let alt, link = get_alt_link line in
+        Some (UnsafeImg { alt; link; classes = [] }, lines)
+    | line :: lines when Str.string_match re_with_class line 0 ->
+        let alt, link = get_alt_link line in
         let classes = Str.matched_group 3 line |> read_classes in
         Some (UnsafeImg { alt; link; classes }, lines)
     | _ -> None
 
-  (* ``` {.class1 .class2} *)
+  (* ``` {.class1 .class2} or ~~~ {.class1 .class2} *)
   let code_block =
-    let re = Str.regexp "\\(```+\\)[ \t]*{\\(.*\\)}[ \t]*$" in
+    let re1 = Str.regexp "\\(```+\\)[ \t]*{\\(.*\\)}[ \t]*$" in
+    let re2 = Str.regexp "\\(~~~+\\)[ \t]*{\\(.*\\)}[ \t]*$" in
     function
-    | line :: lines when Str.string_match re line 0 ->
+    | line :: lines
+      when Str.string_match re1 line 0 || Str.string_match re2 line 0 ->
         let code_block_bound = Str.matched_group 1 line in
         let classes = Str.matched_group 2 line |> read_classes in
         let cb, lines =
@@ -318,8 +332,8 @@ let try_unicode =
   let re_hex =
     Str.regexp "&#x[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]?;"
   in
-  (* &#nnnn; *)
-  let re_dec = Str.regexp "&#[0-9][0-9][0-9][0-9];" in
+  (* &#nnnn; or &#nnnnn; or &#nnnnnn; *)
+  let re_dec = Str.regexp "&#[0-9][0-9][0-9][0-9][0-9]?[0-9]?;" in
   let get_unicode cur s =
     if Str.string_match re_hex s cur || Str.string_match re_dec s cur then
       Some (Str.matched_string s, Str.match_end ())
@@ -355,6 +369,10 @@ let try_em_strong =
   let re = Str.regexp "\\*\\*\\*" in
   try_paren re InEmStrong ~open_:EmStrongOpen ~close:EmStrongClose
 
+let try_strike =
+  let re = Str.regexp "~~" in
+  try_paren re InStrike ~open_:StrikeOpen ~close:StrikeClose
+
 let try_code ({ cur; lines; _ } as cont) =
   match lines with
   | line :: lines when cur < String.length line && Char.equal line.[cur] '`'
@@ -382,7 +400,7 @@ let try_char_span ({ cur; lines; _ } as cont) =
         let rec read_chars n =
           if n < len then
             match line.[n] with
-            | '[' | '\\' | '&' | '*' | '`' | ' ' | '<' -> n
+            | '[' | '\\' | '&' | '*' | '~' | '`' | ' ' | '<' -> n
             | _ -> read_chars (n + 1)
           else n
         in
@@ -409,6 +427,7 @@ let rec trans_spans ~unsafe =
     | InEm :: status -> close_status (EmClose :: rev) status
     | InStrong :: status -> close_status (StrongClose :: rev) status
     | InEmStrong :: status -> close_status (EmStrongClose :: rev) status
+    | InStrike :: status -> close_status (StrikeClose :: rev) status
   in
   let rec trans ({ status; lines; cur } as cont) rev =
     match lines with
@@ -425,6 +444,7 @@ let rec trans_spans ~unsafe =
             | '\\' -> try_escape_char cont
             | '&' -> try_unicode cont
             | '*' -> (try_em_strong >=> try_strong >=> try_em) cont
+            | '~' -> try_strike cont
             | '`' -> try_code cont
             | ' ' -> try_br cont
             | '<' -> try_a cont
@@ -623,11 +643,10 @@ and trans_from_lines ~unsafe ~depth lines =
           (if 0 < String.length line then
            match line.[0] with
            | '!' -> Unsafe.(try_block ~unsafe img) lines
-           | '`' ->
+           | '`' | '~' ->
                (Unsafe.(try_block ~unsafe code_block)
                >=> try_code_block_by_bound)
                  lines
-           | '~' -> try_code_block_by_bound lines
            | ' ' -> try_code_block_by_indent lines
            | '<' ->
                (Unsafe.(try_block ~unsafe div)

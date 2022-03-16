@@ -7,7 +7,7 @@ avoid generating broken html code or XSS attacks.
 
 ## Unicode
 
-`&#xnnnnn;` or `&#nnnn;` can be written in the text.
+`&#xhhhhh;` or `&#nnnnnn;` can be written in the text.
 
 ## HTML special character & escape
 
@@ -41,6 +41,12 @@ want to think about ambiguity from there.  For example,
 
 will NOT be translated to as we can imagine, i.e.,
 `<strong><em>word</em>word</strong>`.
+
+## Strike
+
+```
+~~word~~
+```
 
 ## Code
 
@@ -186,7 +192,7 @@ abc
 ***
 ```
 
-## What is not supported
+## Unsafe mode: more supports on trustworthy source
 
 Basically, the following syntax are not supported.
 
@@ -197,7 +203,13 @@ Basically, the following syntax are not supported.
 BUT, there is *unsafe mode* that can be used when the markdown
 source is trustworthy.
 
-### Image + class (unsafe mode only)
+### [unsafe mode only] Image with/without class
+
+```
+![text](link)
+```
+
+or
 
 ```
 ![text](link) {.c1 .c2}
@@ -209,13 +221,17 @@ is translated to
 <img alt="text" src="link" class="c1 c2">
 ```
 
-### Code block + class (unsafe mode only)
+### [unsafe mode only] Code block with class
 
-~~~
+~~~~~
 ``` {.class1 .class2}
 x=1
 ```
+
+~~~ {.class1 .class2}
+x=1
 ~~~
+~~~~~
 
 is translated to
 
@@ -223,7 +239,7 @@ is translated to
 <pre><code class="class1 class2">x=1</code></pre>
 ```
 
-### Some of inline HTMLs (unsafe mode only)
+### [unsafe mode only] Inline HTML
 
 ```
 <div>
@@ -234,7 +250,7 @@ is translated to
 * `<div>` (or `<div ...`) and `</div>` must be prefixes of the line.
 * Supported tags: `div`, `script`
 
-### Link (unsafe mode only)
+### [unsafe mode only] Link on text
 
 ```
 [text](link)
