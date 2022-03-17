@@ -534,7 +534,7 @@ let try_p ~unsafe lines =
 
 let block_max_depth = 4
 let re_ul = Str.regexp "* \\(  \\| \\|\\)"
-let re_ol = Str.regexp "[0-9]\\(.  ?\\|[0-9]. \\)"
+let re_ol = Str.regexp "[0-9]\\(\\.  ?\\|[0-9]\\. \\)"
 let is_xl_item_start re_xl line = Str.string_match re_xl line 0
 let is_ul_item_start = is_xl_item_start re_ul
 let is_ol_item_start = is_xl_item_start re_ol
