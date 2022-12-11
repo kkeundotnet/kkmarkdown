@@ -1,0 +1,3 @@
+(** Paragraph *)
+
+include BlockRule.S

@@ -9,6 +9,10 @@ build:
 test:
 	dune runtest -f
 
+.PHONY: doc
+doc:
+	dune build @doc
+
 .PHONY: clean
 clean:
 	dune clean

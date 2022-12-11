@@ -1,4 +1,4 @@
 (library
- (name kkmarkdown_lib)
+ (name lib)
  (public_name kkmarkdown.lib)
  (libraries str))

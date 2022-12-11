@@ -1,5 +1,5 @@
 open Js_of_ocaml
-module Kkmarkdown = Kkmarkdown_lib.Kkmarkdown
+module Kkmarkdown = Lib.Kkmarkdown
 
 let () =
   Js.export "kkmarkdown"

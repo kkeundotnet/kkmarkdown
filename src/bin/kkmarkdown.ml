@@ -1,5 +1,6 @@
-open Kkmarkdown_lib
 module F = Format
+module Kkmarkdown = Lib.Kkmarkdown
+module Typ = Lib.Typ
 
 type env = { rss : bool; unsafe : bool; input_files : string list }
 
@@ -26,7 +27,7 @@ let main { rss; unsafe; input_files } =
   | [] -> Kkmarkdown.trans_from_stdin ~unsafe ()
   | [ file ] -> Kkmarkdown.trans_from_file ~unsafe file
   | _ -> invalid_arg "Multiple files are given.")
-  |> Kkmarkdown.pp ~rss F.std_formatter;
+  |> Typ.pp ~rss F.std_formatter;
   F.print_flush ()
 
 let () = parse_arg () |> main
