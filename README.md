@@ -1,4 +1,4 @@
-Kkmarkdown
+kkmarkdown
 ======
 
 Small & safe markdown engine
@@ -15,7 +15,7 @@ Build & run
 Install dependencies:
 
 ```
-$ opam install dune js_of_ocaml js_of_ocaml-ppx alcotest
+$ opam install --deps-only . [--with-test]
 ```
 
 Build:
@@ -23,6 +23,7 @@ Build:
 ```
 $ make
 $ make test
+$ make doc
 ```
 
 It will make
