@@ -279,7 +279,9 @@ let test_unsafe_img () =
   unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class="c1 c2"></p>|}
     {|![  alt  ](  link  ) {  .c1  .c2  }|};
   unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
-    {|![  alt  ](  link  ) {   }|}
+    {|![  alt  ](  link  ) {   }|};
+  unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
+    {|![  alt  ](  link  )|}
 
 let test_rss_img () =
   rss_check "rss img" {|<p><img alt="alt" src="link"></p>|}

@@ -11,10 +11,9 @@ let start line : state BlockRule.res =
     let alt = Str.matched_group 1 line |> String.trim in
     let link = Str.matched_group 2 line |> String.trim in
     let classes =
-      let matched_paren = Str.matched_group 3 line in
-      if String.length matched_paren >= 2 then
-        Str.matched_group 3 line |> Utils.read_classes
-      else []
+      match Str.matched_group 4 line with
+      | classes -> Utils.read_classes classes
+      | exception Not_found -> []
     in
     Stop { state = { alt; link; classes }; handle_line = `Discard }
   else Die
