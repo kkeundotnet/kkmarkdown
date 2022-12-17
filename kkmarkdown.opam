@@ -4,6 +4,7 @@ authors: ["kkeundotnet"]
 homepage: "https://github.com/kkeundotnet/kkmarkdown"
 bug-reports: "https://github.com/kkeundotnet/kkmarkdown/issues"
 dev-repo: "git+https://github.com/kkeundotnet/kkmarkdown.git"
+license: "Unlicense"
 
 build: [
   ["dune" "subst"] {pinned}
@@ -17,4 +18,5 @@ depends: [
   "js_of_ocaml"
   "js_of_ocaml-ppx"
   "alcotest" {with-test}
+  "odoc" {with-doc}
 ]
