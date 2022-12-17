@@ -38,7 +38,7 @@ class Kkmarkdown
         return $cmd;
     }
 
-    public function transform(string $md): string
+    public function trans(string $md): string
     {
         $descriptorspec = [
             0 => ['pipe', 'r'], // stdin is a pipe that the child will read from
@@ -61,15 +61,29 @@ class Kkmarkdown
                 return $result;
             }
         }
-        die("kkmarkdown failed: transform");
+        die("kkmarkdown failed: trans");
     }
 
-    public function transform_from_file(string $file): string
+    /**
+     * @deprecated Use trans instead
+     */
+    public function transform(string $md): string {
+        return trans($md);
+    }
+
+    public function trans_from_file(string $file): string
     {
         $contents = file_get_contents($file);
         if ($contents !== false) {
-            return $this->transform($contents);
+            return $this->trans($contents);
         }
-        die("kkmarkdown failed: transform_from_file");
+        die("kkmarkdown failed: trans_from_file");
+    }
+
+    /**
+     * @deprecated Use trans_from_file instead
+     */
+    public function transform_from_file(string $file): string {
+        return trans_from_file($file);
     }
 }
