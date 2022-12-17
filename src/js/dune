@@ -1,6 +1,3 @@
-; names = name of the files to compile into executables
-; public_names = name of the executables
-
 (executable
  (name KkmarkdownJs)
  (modes js)
