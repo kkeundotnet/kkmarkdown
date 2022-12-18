@@ -1,13 +1,22 @@
 kkmarkdown
 ======
 
-Small & safe markdown engine
+Safe & modular markdown engine
 
-* Only a subset of markdown syntax is supported.
-* Legit HTML code generation & no XSS attack is the goal.
+Goal:
+
+* To avoid XSS attack, by supporting a limited subset of markdown syntax.
+* To run the same markdown engine in both server and client sides, thanks to
+  [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml).
 
 Supported syntax are listed here:  
 <https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
+
+Not goal:
+
+* Generating legit HTML is not a goal. Garbage in, garbage out at the moment.
+
+![build by push](https://github.com/kkeundotnet/kkmarkdown/actions/workflows/build.yml/badge.svg?event=push)
 
 Build & run
 ---
