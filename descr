@@ -1,4 +1,6 @@
-Kkmarkdown: small & safe markdown engine
+kkmarkdown: safe markdown engine
 
-Kkmarkdown aims to safe markdown rendering results from XSS scripts.  Instead, it supports only a
-subset of markdown syntax.
+The goals of kkmarkdown are,
+
+* To avoid XSS attack, by supporting limited markdown syntax.
+* To run the same markdown engine in both server and client sides, thanks to js_of_ocaml.

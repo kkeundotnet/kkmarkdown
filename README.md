@@ -7,7 +7,6 @@ Goal:
 
 * To avoid XSS attack, by supporting [limited markdown
   syntax](https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md).
-
 * To run the same markdown engine in both server and client sides, thanks to
   [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml).
 
