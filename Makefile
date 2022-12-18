@@ -11,6 +11,7 @@ test:
 
 .PHONY: doc
 doc:
+	scripts/gen_syntax_doc.sh
 	dune build @doc
 
 .PHONY: clean

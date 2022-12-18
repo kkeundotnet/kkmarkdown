@@ -1,0 +1,193 @@
+{0 kkmarkdown syntax}
+
+
+{1 BlockRuleCode}
+
+Code block with backquote
+
+{[
+```
+abc
+```
+]}
+
+{1 BlockRuleCode}
+
+Code block with tilde
+
+{[
+~~~
+abc
+~~~
+]}
+
+{1 BlockRuleCode}
+
+{^ UNSAFE} Code block with backquote
+
+{[
+``` {.abc}
+abc
+```
+]}
+
+{1 BlockRuleCode}
+
+{^ UNSAFE} Code block with tilde
+
+{[
+~~~ {.abc}
+abc
+~~~
+]}
+
+{1 BlockRuleCode}
+
+Code block with indent
+
+{[
+____abc
+]}
+
+where [_] is a space
+
+{1 BlockRuleHeader}
+
+Headers: e.g. [# abc] is for [<h1>] and [## abc] is for [<h2>]. Similar rules are applied for
+    [<h3>] to [<h6>].
+
+{1 BlockRuleHeader}
+
+Header [<h1>] by underline
+
+{[
+Title
+===
+]}
+
+{1 BlockRuleHeader}
+
+Header [<h2>] by underline
+
+{[
+Sub-title
+---
+]}
+
+{1 BlockRuleHr}
+
+Hr: e.g. [***]
+
+{1 BlockRuleImg}
+
+{^ UNSAFE} Image
+
+{[
+![kkeundotnet](https://kkeun.net) {.a .b}
+]}
+
+Note that the class part is optional.
+
+{1 BlockRuleInlineHTML}
+
+{^ UNSAFE} Div inline HTML
+
+{[
+<div>
+  ...
+</div>
+]}
+
+{1 BlockRuleInlineHTML}
+
+{^ UNSAFE} Script inline HTML
+
+{[
+<script>
+  ...
+</script>
+]}
+
+{1 BlockRuleList}
+
+Unordered list
+
+{[
+* a
+* b
+* c
+]}
+
+{1 BlockRuleList}
+
+Ordered list
+
+{[
+1. a
+2. b
+3. c
+]}
+
+{1 BlockRuleP}
+
+Paragraph
+
+{[
+abc
+
+def
+]}
+
+{1 BlockRuleQuote}
+
+Quote
+
+{[
+> abc
+]}
+
+{1 RuleBr}
+
+Br: e.g. [abc__<end-of-line>], where '[_]' is a space
+
+{1 SpanRuleA}
+
+Link: e.g. [<https://kkeun.net>]
+
+{1 SpanRuleA}
+
+{^ UNSAFE} Link: e.g. [\[kkeundotnet\](https://kkeun.net)]
+
+{1 SpanRuleEscape}
+
+Escaped character: e.g. [\[ \] \ ` * # _ { } ( ) + - . !]
+
+{1 SpanRuleStack}
+
+Emphasis: e.g. [*abc*]
+
+{1 SpanRuleStack}
+
+Strong: e.g. [**abc**]
+
+{1 SpanRuleStack}
+
+Emphasis+strong: e.g. [***abc***]
+
+{1 SpanRuleStack}
+
+Strike: e.g. [~~abc~~]
+
+{1 SpanRuleStack}
+
+Code: e.g. [`abc`]
+
+{1 SpanRuleUnicode}
+
+Hex unicode: e.g. [&#xhhhhh;]
+
+{1 SpanRuleUnicode}
+
+Dec unicode: e.g. [&#nnnnnn;]
+
+That's it.  Enjoy kkmarkdown!

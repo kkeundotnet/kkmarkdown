@@ -1,5 +1,7 @@
 (** Header *)
 
+(* SYNTAX: START *)
+
 module Sharp : BlockRule.S
 (** Headers: e.g. [# abc] is for [<h1>] and [## abc] is for [<h2>]. Similar rules are applied for
     [<h3>] to [<h6>]. *)
@@ -19,3 +21,5 @@ module H2 : BlockRule.S
 Sub-title
 ---
 ]} *)
+
+(* SYNTAX: END *)

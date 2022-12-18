@@ -1,3 +1,4 @@
+(* SYNTAX: START *)
 (** {^ UNSAFE} Image
 
 {[
@@ -5,5 +6,6 @@
 ]}
 
 Note that the class part is optional. *)
+(* SYNTAX: END *)
 
 include BlockRule.S

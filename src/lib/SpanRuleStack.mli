@@ -1,5 +1,7 @@
 (** Span-rules that is based on stack *)
 
+(* SYNTAX: START *)
+
 module Em : SpanRule.S
 (** Emphasis: e.g. [*abc*] *)
 
@@ -14,3 +16,5 @@ module Strike : SpanRule.S
 
 module Code : SpanRule.S
 (** Code: e.g. [`abc`] *)
+
+(* SYNTAX: END *)

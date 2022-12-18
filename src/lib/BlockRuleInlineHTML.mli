@@ -3,6 +3,8 @@
 Currently, it supports [div] and [script] only, but we are thinking of generalizing it to support {i
 any} tags, since anyhow the inline html rule should be on only when unsafe mode. *)
 
+(* SYNTAX: START *)
+
 module Div : BlockRule.S
 (** {^ UNSAFE} Div inline HTML
 
@@ -20,3 +22,5 @@ module Script : BlockRule.S
   ...
 </script>
 ]} *)
+
+(* SYNTAX: END *)

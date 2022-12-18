@@ -1,5 +1,7 @@
 (** Code block *)
 
+(* SYNTAX: START *)
+
 module Backquote : BlockRule.S
 (** Code block with backquote
 
@@ -44,3 +46,5 @@ ____abc
 ]}
 
 where [_] is a space *)
+
+(* SYNTAX: END *)

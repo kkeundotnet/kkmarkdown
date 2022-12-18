@@ -2,3 +2,7 @@
  (name lib)
  (public_name kkmarkdown.lib)
  (libraries str))
+
+(documentation
+ (package kkmarkdown)
+ (mld_files syntax))

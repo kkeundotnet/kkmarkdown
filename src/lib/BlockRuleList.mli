@@ -1,5 +1,7 @@
 (** List *)
 
+(* SYNTAX: START *)
+
 module Ul : BlockRule.S
 (** Unordered list
 
@@ -17,3 +19,5 @@ module Ol : BlockRule.S
 2. b
 3. c
 ]} *)
+
+(* SYNTAX: END *)
