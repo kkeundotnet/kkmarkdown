@@ -29,9 +29,7 @@ $ opam install --deps-only . [--with-test]
 Build:
 
 ```
-$ make
-$ make test
-$ make doc
+$ make [|test|doc|clean|fmt]
 ```
 
 It will make

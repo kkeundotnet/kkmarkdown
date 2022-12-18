@@ -3,7 +3,7 @@ default: build
 
 .PHONY: build
 build:
-	dune build src
+	dune build @install
 
 .PHONY: test
 test:
