@@ -4,7 +4,7 @@ Currently, it supports [div] and [script] only, but we are thinking of generaliz
 any} tags, since anyhow the inline html rule should be on only when unsafe mode. *)
 
 module Div : BlockRule.S
-(** Div
+(** {^ UNSAFE} Div inline HTML
 
 {[
 <div>
@@ -13,7 +13,7 @@ module Div : BlockRule.S
 ]} *)
 
 module Script : BlockRule.S
-(** Script
+(** {^ UNSAFE} Script inline HTML
 
 {[
 <script>
