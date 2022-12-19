@@ -1,0 +1,5 @@
+{0 kkmarkdown}
+
+- {{: https://github.com/kkeundotnet/kkmarkdown#readme }README at GitHub}
+- {{!page-syntax}Supported syntax}
+- {{!module-Lib}Internal OCaml Modules API}

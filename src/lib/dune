@@ -5,4 +5,4 @@
 
 (documentation
  (package kkmarkdown)
- (mld_files syntax))
+ (mld_files index syntax))

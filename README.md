@@ -6,7 +6,7 @@ Safe markdown engine
 Goal:
 
 * To avoid XSS attack, by supporting [limited markdown
-  syntax](https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md).
+  syntax](https://kkeundotnet.github.io/kkmarkdown/kkmarkdown/syntax.html).
 * To run the same markdown engine in both server and client sides, thanks to
   [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml).
 
@@ -63,7 +63,7 @@ In html:
 
 There is *unsafe mode* that can be used when the markdown source is
 trustworthy.  See below for supported syntax in the unsafe mode:  
-<https://github.com/kkeundotnet/kkmarkdown/blob/master/syntax.md>
+<https://kkeundotnet.github.io/kkmarkdown/kkmarkdown/syntax.html>
 
 In shell:
 
