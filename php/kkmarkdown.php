@@ -48,7 +48,7 @@ class Kkmarkdown
         $process = proc_open($this->get_cmd(), $descriptorspec, $pipes);
         if (is_resource($process)) {
             // $pipes now looks like this:
-            // 0 => writeable handle connected to child stdin
+            // 0 => writable handle connected to child stdin
             // 1 => readable handle connected to child stdout
             fwrite($pipes[0], $md);
             fclose($pipes[0]);
