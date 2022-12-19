@@ -1,5 +1,13 @@
 {0 kkmarkdown syntax}
 
+It supports a subset of {{: https://daringfireball.net/projects/markdown/syntax }the original
+markdown syntax}, in order to avoid XSS attack.
+
+The following rules are listed in alphabetical order.  To see the actual application order, read the definitions:
+
+- {{: https://github.com/kkeundotnet/kkmarkdown/blob/main/src/lib/AllSpanRules.ml}AllSpanRules.ml}
+- {{: https://github.com/kkeundotnet/kkmarkdown/blob/main/src/lib/AllBlockRules.ml}AllBlockRules.ml}
+
 
 {1 BlockRuleCode}
 
@@ -29,6 +37,12 @@ abc
 ``` {.abc}
 abc
 ```
+]}
+
+is tranlsated to
+
+{[
+<pre><code class="abc">abc</code></pre>
 ]}
 
 {1 BlockRuleCode}
@@ -83,7 +97,13 @@ Hr: e.g. [***]
 {^ UNSAFE} Image
 
 {[
-![kkeundotnet](https://kkeun.net) {.a .b}
+![text](link) {.a .b}
+]}
+
+is translated to
+
+{[
+<img alt="text" src="link" class="a b">
 ]}
 
 Note that the class part is optional.
@@ -97,6 +117,8 @@ Note that the class part is optional.
   ...
 </div>
 ]}
+
+Note that [<div>] and [</div>] should be their own lines.
 
 {1 BlockRuleInlineHTML}
 
@@ -117,6 +139,68 @@ Unordered list
 * b
 * c
 ]}
+
+A list element can have block-level elements by adding line spaces.
+
+{[
+* line1
+
+  * line2
+  * line3
+
+* line4
+]}
+
+is translated to
+
+{[
+<ul>
+  <li>
+    <p>line1</p>
+    <ul>
+      <li>line2</li>
+      <li>line3</li>
+    </ul>
+  </li>
+  <li>
+    <p>line4</p>
+  </li>
+</ul>
+]}
+
+However, without a line space, a list element CANNOT include another list.
+
+{[
+* line1
+  * line2
+  * line3
+]}
+
+is translated to
+
+{[
+<ul>
+  <li>
+    <p>line1 <em> line2 </em> line3</p>
+  </li>
+</ul>
+]}
+
+rather than something like
+
+{[
+<ul>
+  <li>
+    line1
+    <ul>
+      <li>line2</li>
+      <li>line3</li>
+    </ul>
+  </li>
+</ul>
+]}
+
+This is beacause, I am too {i lazy} to think about such ambiguous corner cases. /o\
 
 {1 BlockRuleList}
 
@@ -154,13 +238,27 @@ Br: e.g. [abc__<end-of-line>], where '[_]' is a space
 
 Link: e.g. [<https://kkeun.net>]
 
+For simplicity, the [https://] prefix is omitted in the translated result, i.e. the example above is
+translated to
+
+{[
+<a href="https://kkeun.net">kkeun.net</a>
+]}
+
+Note that the link address must start with [https://] or [http://].
+
 {1 SpanRuleA}
 
 {^ UNSAFE} Link: e.g. [\[kkeundotnet\](https://kkeun.net)]
 
 {1 SpanRuleEscape}
 
-Escaped character: e.g. [\[ \] \ ` * # _ { } ( ) + - . !]
+Escaped character: HTML special characters, e.g. [&], [<], etc., are translated to [&amp;],
+    [&lt;], etc.  The following characters should be escaped by backslash in markdown.
+
+{[
+[ ] \ ` * # _ { } ( ) + - . !
+]}
 
 {1 SpanRuleStack}
 
@@ -173,6 +271,14 @@ Strong: e.g. [**abc**]
 {1 SpanRuleStack}
 
 Emphasis+strong: e.g. [***abc***]
+
+Note that nested forms of emphasis and strong are NOT supported.  For example,
+
+{[
+***word*word**
+]}
+
+will NOT be translated as you expect.
 
 {1 SpanRuleStack}
 

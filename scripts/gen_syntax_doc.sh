@@ -8,7 +8,16 @@ MLIS=$LIB/*.mli
 TGT=$LIB/syntax.mld
 
 echo -n "Generate $TGT... " 1>&2
-echo -e "{0 kkmarkdown syntax}\n" > $TGT
+echo -e "{0 kkmarkdown syntax}
+
+It supports a subset of {{: https://daringfireball.net/projects/markdown/syntax }the original
+markdown syntax}, in order to avoid XSS attack.
+
+The following rules are listed in alphabetical order.  To see the actual application order, read the definitions:
+
+- {{: https://github.com/kkeundotnet/kkmarkdown/blob/main/src/lib/AllSpanRules.ml}AllSpanRules.ml}
+- {{: https://github.com/kkeundotnet/kkmarkdown/blob/main/src/lib/AllBlockRules.ml}AllBlockRules.ml}
+" > $TGT
 for file in $MLIS; do
     base=$(basename ${file%.mli})
     awk "/SYNTAX: START/{ syntax=1; }

@@ -12,7 +12,9 @@ module Div : BlockRule.S
 <div>
   ...
 </div>
-]} *)
+]}
+
+Note that [<div>] and [</div>] should be their own lines. *)
 
 module Script : BlockRule.S
 (** {^ UNSAFE} Script inline HTML

@@ -2,7 +2,13 @@
 (** {^ UNSAFE} Image
 
 {[
-![kkeundotnet](https://kkeun.net) {.a .b}
+![text](link) {.a .b}
+]}
+
+is translated to
+
+{[
+<img alt="text" src="link" class="a b">
 ]}
 
 Note that the class part is optional. *)

@@ -27,6 +27,12 @@ module UnsafeBackquote : BlockRule.S
 ``` {.abc}
 abc
 ```
+]}
+
+is tranlsated to
+
+{[
+<pre><code class="abc">abc</code></pre>
 ]} *)
 
 module UnsafeTilde : BlockRule.S

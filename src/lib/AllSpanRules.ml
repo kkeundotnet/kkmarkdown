@@ -1,4 +1,4 @@
-(** List of all span rules in descending order, except {!CharsSpan} *)
+(** List of all span rules in descending order, except {!SpanRuleChars} *)
 let all : (module SpanRule.S) list =
   [
     (module SpanRuleEscape);
