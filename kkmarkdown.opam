@@ -1,18 +1,19 @@
 opam-version: "2.0"
-maintainer: "kkeundotnet@gmail.com"
-authors: ["kkeundotnet"]
+name: "kkmarkdown"
+version: "1.0.0"
+synopsis: "A safe markdown engine"
+description: """
+The goals of kkmarkdown are,
+
+* To avoid XSS attack, by supporting limited markdown syntax.
+* To run the same markdown engine in both server and client sides, thanks to js_of_ocaml.
+"""
+maintainer: "kkeundotnet <kkeundotnet@gmail.com>"
+authors: "kkeundotnet <kkeundotnet@gmail.com>"
+license: "Unlicense"
 homepage: "https://github.com/kkeundotnet/kkmarkdown"
 bug-reports: "https://github.com/kkeundotnet/kkmarkdown/issues"
 dev-repo: "git+https://github.com/kkeundotnet/kkmarkdown.git"
-license: "Unlicense"
-
-build: [
-  ["dune" "subst"] {pinned}
-  ["dune" "build" "-p" name "-j" jobs]
-]
-
-run-test: ["dune" "runtest" "-p" name]
-
 depends: [
   "dune" {build}
   "dune-build-info"
@@ -21,3 +22,4 @@ depends: [
   "alcotest" {with-test}
   "odoc" {with-doc}
 ]
+build: ["dune" "build" "-p" name "-j" jobs]

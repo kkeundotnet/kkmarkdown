@@ -1,7 +1,7 @@
 kkmarkdown
 ======
 
-Safe markdown engine
+A safe markdown engine
 
 Goal:
 
