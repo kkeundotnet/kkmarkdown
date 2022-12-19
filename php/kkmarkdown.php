@@ -64,13 +64,6 @@ class Kkmarkdown
         die("kkmarkdown failed: trans");
     }
 
-    /**
-     * @deprecated Use trans instead
-     */
-    public function transform(string $md): string {
-        return trans($md);
-    }
-
     public function trans_from_file(string $file): string
     {
         $contents = file_get_contents($file);
@@ -78,12 +71,5 @@ class Kkmarkdown
             return $this->trans($contents);
         }
         die("kkmarkdown failed: trans_from_file");
-    }
-
-    /**
-     * @deprecated Use trans_from_file instead
-     */
-    public function transform_from_file(string $file): string {
-        return trans_from_file($file);
     }
 }
