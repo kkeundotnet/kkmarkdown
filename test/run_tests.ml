@@ -257,6 +257,10 @@ let test_ul () =
   check "ul" {|<ul><li>hi</li>
 <li>bye</li></ul>|} {|* hi
 * bye|};
+  check "ul" {|<ul><li>hi</li>
+<li>bye</li></ul>|} {|* hi
+* bye
+|};
   check "ul" {|<ul><li><p>hi</p></li>
 <li><p>bye</p></li></ul>|} {|* hi
 

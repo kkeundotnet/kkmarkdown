@@ -29,7 +29,12 @@ end) : BlockRule.S = struct
           handle_line = `Keep;
         }
 
-  let remove_trailing_empty_line rev_lines =
+  let remove_trailing_empty_line lines =
+    match List.rev lines with
+    | hd :: tl when Utils.is_empty_line hd -> List.rev tl
+    | _ -> lines
+
+  let remove_trailing_empty_line_rev rev_lines =
     match rev_lines with
     | hd :: tl when Utils.is_empty_line hd -> tl
     | _ -> rev_lines
@@ -51,7 +56,8 @@ end) : BlockRule.S = struct
     let lis =
       separate_lis lines
       |> List.rev_map (fun rev_lines ->
-             remove_trailing_empty_line rev_lines |> List.rev_map remove_indent)
+             remove_trailing_empty_line_rev rev_lines
+             |> List.rev_map remove_indent)
     in
     let construct_li : string list -> Typ.li =
       if has_empty_line then fun lines -> LiP (trans_blocks lines)
