@@ -7,9 +7,8 @@ type stack_elt = Em | Strong | EmStrong | Strike | Code
 type span =
   | A of string
   | Br
-  | CharSpan of char (* TODO remove? *)
+  | CharSpan of char
   | CharsSpan of string
-  | NoneSpan
   | StackOpen of stack_elt
   | StackClose of stack_elt
   | UnicodeSpan of string

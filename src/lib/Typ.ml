@@ -7,7 +7,6 @@ type span =
   | Br
   | CharSpan of char
   | CharsSpan of string
-  | NoneSpan
   | StackOpen of stack_elt
   | StackClose of stack_elt
   | UnicodeSpan of string
@@ -81,7 +80,6 @@ let rec pp_span f = function
   | Br -> pp_open f "br"
   | CharSpan c -> pp_char f c
   | CharsSpan s -> pp_chars f s
-  | NoneSpan -> ()
   | StackOpen Em -> pp_open f "em"
   | StackClose Em -> pp_close f "em"
   | StackOpen Strong -> pp_open f "strong"
