@@ -12,7 +12,7 @@ type span =
   | StackOpen of stack_elt
   | StackClose of stack_elt
   | UnicodeSpan of string
-  | UnsafeA of { spans : span list; (* TODO span? *) link : string }
+  | UnsafeA of { spans : span list; link : string }
 
 type list_typ = Ordered | Unordered
 
