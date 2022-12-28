@@ -74,9 +74,12 @@ let pp_wrap tag ?classes pp f x =
 let pp_list_with_line f = pp_list ~pp_sep:(fun f -> F.pp_print_char f '\n') f
 
 let rec pp_span f = function
-  | A s when String.starts_with s ~prefix:"https://" ->
-      F.fprintf f {|<a href="%s">%a</a>|} s pp_chars (Str.string_after s 8)
-  | A s -> F.fprintf f {|<a href="%s">%a</a>|} s pp_chars s
+  | A s ->
+      let short_link =
+        if String.starts_with s ~prefix:"https://" then Str.string_after s 8
+        else s
+      in
+      F.fprintf f {|<a href="%a">%a</a>|} pp_chars s pp_chars short_link
   | Br -> pp_open f "br"
   | CharSpan c -> pp_char f c
   | CharsSpan s -> pp_chars f s
@@ -96,7 +99,7 @@ let rec pp_span f = function
   | StackClose code -> pp_close f "code"
   | UnicodeSpan s -> F.pp_print_string f s
   | UnsafeA { spans; link } ->
-      F.fprintf f {|<a href="%s">%a</a>|} link pp_span_list spans
+      F.fprintf f {|<a href="%a">%a</a>|} pp_chars link pp_span_list spans
 
 and pp_span_list f = pp_list pp_span f
 
@@ -125,7 +128,8 @@ let rec pp_block ~rss f = function
         if not rss then F.fprintf f {| class="%a"|} pp_classes classes
       in
       let pp_img f () =
-        F.fprintf f {|<img alt="%s" src="%s"%a>|} alt link pp_class_prop classes
+        F.fprintf f {|<img alt="%a" src="%a"%a>|} pp_chars alt pp_chars link
+          pp_class_prop classes
       in
       pp_wrap "p" pp_img f ()
   | UnsafeInlineHtml lines ->

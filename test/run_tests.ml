@@ -33,7 +33,13 @@ let test_a () =
     {|<" onclick="myattack>|};
   check "a"
     {|<p><a href="https://kkeun.net">kkeun.net</a><a href="https://kkeun.net">kkeun.net</a></p>|}
-    {|<https://kkeun.net><https://kkeun.net>|}
+    {|<https://kkeun.net><https://kkeun.net>|};
+  check "escape link"
+    {|<p><a href="http://abc.com?foo=30&amp;goo=40">http://abc.com?foo=30&amp;goo=40</a></p>|}
+    {|<http://abc.com?foo=30&goo=40>|};
+  check "escape link"
+    {|<p><a href="https://abc.com?foo=30&amp;goo=40">abc.com?foo=30&amp;goo=40</a></p>|}
+    {|<https://abc.com?foo=30&goo=40>|}
 
 let test_br () =
   check "br" {|<p>hello<br>hi</p>|} {|hello  
@@ -285,7 +291,10 @@ let test_unsafe_img () =
   unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
     {|![  alt  ](  link  ) {   }|};
   unsafe_check "unsafe img" {|<p><img alt="alt" src="link" class=""></p>|}
-    {|![  alt  ](  link  )|}
+    {|![  alt  ](  link  )|};
+  unsafe_check "escape alt and link"
+    {|<p><img alt="alt&amp;with&amp;and" src="https://abc.com?foo=30&amp;goo=40" class=""></p>|}
+    {|![alt&with&and](https://abc.com?foo=30&goo=40)|}
 
 let test_rss_img () =
   rss_check "rss img" {|<p><img alt="alt" src="link"></p>|}
@@ -381,7 +390,10 @@ let test_unsafe_a () =
   unsafe_check "unsafe a" {|<p><a href="b">a</a> hello <a href="d">c</a>.</p>|}
     {|[a](b) hello [c](d).|};
   unsafe_check "unsafe a" {|<p><a href="b">a</a> hello (d).</p>|}
-    {|[a](b) hello (d).|}
+    {|[a](b) hello (d).|};
+  unsafe_check "escape link"
+    {|<p><a href="https://abc.com?foo=30&amp;goo=40">abc</a></p>|}
+    {|[abc](https://abc.com?foo=30&goo=40)|}
 
 let test_no_unsafe_script () =
   check "no unsafe script" {|<p>&lt;script&gt; contents &lt;/script&gt;</p>|}
