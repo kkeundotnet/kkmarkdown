@@ -176,7 +176,9 @@ let test_header () =
   check "header" "<h1>abc</h1>" "# abc";
   check "header" "<h3>abc</h3>" "### abc";
   check "header" "<h1>abc</h1>" "abc\n===";
-  check "header" "<h2>abc</h2>" "abc\n---"
+  check "header" "<h2>abc</h2>" "abc\n---";
+  check "header" "<h1>abc</h1>" "# abc #";
+  check "header" "<h3>abc</h3>" "### abc #### "
 
 let test_hr () =
   check "hr" "<hr>" "***";

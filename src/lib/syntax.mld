@@ -68,7 +68,7 @@ where [_] is a space
 {1 BlockRuleHeader}
 
 Headers: e.g. [# abc] is for [<h1>] and [## abc] is for [<h2>]. Similar rules are applied for
-    [<h3>] to [<h6>].
+    [<h3>] to [<h6>].  Optionally, trailing sharps are acceptable, i.e. [# abc #].
 
 {1 BlockRuleHeader}
 

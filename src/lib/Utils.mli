@@ -8,3 +8,6 @@ val re_spaces_upto_four : Str.regexp
 
 val read_classes : string -> string list
 (** Read classes annotation, e.g. [".a .b"] is read to [\["a"; "b"\]] *)
+
+val remove_trailing_spaces : string -> string
+val remove_trailing_sharps : string -> string

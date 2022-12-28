@@ -16,10 +16,16 @@ module Sharp = struct
 
   let continue state line = assert false
 
+  let remove_trailing_sharps line =
+    Utils.remove_trailing_spaces line
+    |> Utils.remove_trailing_sharps |> Utils.remove_trailing_spaces
+
   let construct { BlockRule.trans_spans } { level } lines : Typ.block =
     let title =
       match lines with
-      | [ line ] -> Str.string_after line (level + 1) |> trans_spans
+      | [ line ] ->
+          Str.string_after line (level + 1)
+          |> remove_trailing_sharps |> trans_spans
       | _ -> assert false
     in
     match level with

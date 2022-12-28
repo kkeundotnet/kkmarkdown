@@ -1,15 +1,5 @@
 let re = Str.regexp ".*  +$"
 
-let remove_trailing_empty_spaces line =
-  let len = String.length line in
-  let exception Done of string in
-  try
-    for i = len - 1 downto 0 do
-      if line.[i] <> ' ' then raise (Done (String.sub line 0 (i + 1)))
-    done;
-    ""
-  with Done s -> s
-
 (** Separate lines by {!re} *)
 let separate lines =
   List.fold_left
@@ -18,7 +8,7 @@ let separate lines =
       | [] -> assert false
       | hd :: tl ->
           if Str.string_match re line 0 then
-            let line = remove_trailing_empty_spaces line in
+            let line = Utils.remove_trailing_spaces line in
             [] :: (line :: hd) :: tl
           else (line :: hd) :: tl)
     [ [] ] lines
