@@ -204,6 +204,14 @@ This is beacause, I am too {i lazy} to think about such ambiguous corner cases. 
 
 {1 BlockRuleList}
 
+Similar to {!Lib.BlockRuleList.UlStar}, but with '[+]' prefix.
+
+{1 BlockRuleList}
+
+Similar to {!Lib.BlockRuleList.UlStar}, but with '[-]' prefix.
+
+{1 BlockRuleList}
+
 Ordered list
 
 {[

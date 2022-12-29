@@ -6,7 +6,9 @@ let all : (module BlockRule.S) list =
     (module BlockRuleHeader.H1);
     (module BlockRuleHeader.H2);
     (module BlockRuleList.Ol);
-    (module BlockRuleList.Ul);
+    (module BlockRuleList.UlStar);
+    (module BlockRuleList.UlPlus);
+    (module BlockRuleList.UlMinus);
     (module BlockRuleCode.Backquote);
     (module BlockRuleCode.Tilde);
     (module BlockRuleCode.UnsafeBackquote);

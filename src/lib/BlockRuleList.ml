@@ -74,8 +74,23 @@ module Ol = Make (struct
   let list_typ = Typ.Ordered
 end)
 
-module Ul = Make (struct
-  let first_char = FirstChar.One '*'
-  let re = Str.regexp "* \\(  \\| \\|\\)"
+module UlMake (M : sig
+  val char : char
+end) =
+Make (struct
+  let first_char = FirstChar.One M.char
+  let re = Str.regexp (String.make 1 M.char ^ " \\(  \\| \\|\\)")
   let list_typ = Typ.Unordered
+end)
+
+module UlStar = UlMake (struct
+  let char = '*'
+end)
+
+module UlPlus = UlMake (struct
+  let char = '+'
+end)
+
+module UlMinus = UlMake (struct
+  let char = '-'
 end)

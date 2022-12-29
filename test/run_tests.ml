@@ -281,7 +281,22 @@ let test_ul () =
 
     * good?
 
-* bye|}
+* bye|};
+  check "ul by plus" {|<ul><li>hi</li>
+<li>bye</li></ul>|} {|+ hi
++ bye|};
+  check "ul by minus" {|<ul><li>hi</li>
+<li>bye</li></ul>|} {|- hi
+- bye|};
+  check "ul mixed"
+    {|<ul><li>hi</li></ul>
+<ul><li>bye</li></ul>
+<ul><li>byebye</li></ul>|}
+    {|* hi
+
++ bye
+
+- byebye|}
 
 let test_no_unsafe_img () =
   check "no unsafe img" {|<p>![  alt  ](  link  ) {  .c1  .c2  }</p>|}

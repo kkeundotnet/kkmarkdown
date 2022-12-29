@@ -2,7 +2,7 @@
 
 (* SYNTAX: START *)
 
-module Ul : BlockRule.S
+module UlStar : BlockRule.S
 (** Unordered list
 
 {[
@@ -72,6 +72,12 @@ rather than something like
 ]}
 
 This is beacause, I am too {i lazy} to think about such ambiguous corner cases. /o\ *)
+
+module UlPlus : BlockRule.S
+(** Similar to {!Lib.BlockRuleList.UlStar}, but with '[+]' prefix. *)
+
+module UlMinus : BlockRule.S
+(** Similar to {!Lib.BlockRuleList.UlStar}, but with '[-]' prefix. *)
 
 module Ol : BlockRule.S
 (** Ordered list
