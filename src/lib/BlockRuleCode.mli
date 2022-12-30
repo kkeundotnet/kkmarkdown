@@ -51,6 +51,12 @@ module Indent : BlockRule.S
 ____abc
 ]}
 
-where [_] is a space *)
+where [_] is a space, i.e. four spaces as indentation.
+
+{[
+\tabc
+]}
+
+Or a tab can be used as indentation instead. *)
 
 (* SYNTAX: END *)

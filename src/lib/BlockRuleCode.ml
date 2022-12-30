@@ -59,12 +59,12 @@ end)
 
 module Indent = struct
   let is_safe = true
-  let first_char = FirstChar.One ' '
+  let first_char = FirstChar.OneOf [ ' '; '\t' ]
   let force_construct = true
 
   type state = unit
 
-  let re = Str.regexp "    "
+  let re = Str.regexp "    \\|\t"
 
   let start line : state BlockRule.res =
     if Str.string_match re line 0 then Go { state = (); handle_line = `Keep }
@@ -74,7 +74,11 @@ module Indent = struct
     if Str.string_match re line 0 then Go { state = (); handle_line = `Keep }
     else Stop { state = (); handle_line = `Left }
 
-  let construct _ () lines =
-    let lines = List.map (fun line -> Str.string_after line 4) lines in
-    Typ.CodeBlock lines
+  let remove_indent line =
+    match line.[0] with
+    | ' ' -> Str.string_after line 4
+    | '\t' -> Str.string_after line 1
+    | _ -> assert false
+
+  let construct _ () lines = Typ.CodeBlock (List.map remove_indent lines)
 end

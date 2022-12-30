@@ -75,7 +75,10 @@ int y;</code></pre>|}
 int y;</code></pre>|}
     {|    int x;
     int y;
-|}
+|};
+  check "code block by tab" {|<pre><code>int x;
+int y;</code></pre>|}
+    "\tint x;\n\tint y;"
 
 let test_deep_block () =
   check "quote"
