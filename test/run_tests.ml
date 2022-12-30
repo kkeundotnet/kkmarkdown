@@ -185,7 +185,10 @@ let test_header () =
 
 let test_hr () =
   check "hr" "<hr>" "***";
-  check "hr" "<hr>" "******"
+  check "hr" "<hr>" "******";
+  check "hr" "<hr>" "* * *";
+  check "hr" "<hr>" "- - -";
+  check "hr" "<hr>" "----------"
 
 let test_ol () =
   check "ol" {|<ol><li>hi</li>
