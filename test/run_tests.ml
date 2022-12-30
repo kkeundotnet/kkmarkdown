@@ -165,11 +165,14 @@ let test_empty () =
 let test_em () =
   check "em" {|<p><em>ab c</em></p>|} {|*ab
 c*|};
-  check "em" {|<p><em>abc</em></p>|} {|*abc|}
+  check "em" {|<p><em>abc</em></p>|} {|*abc|};
+  check "em underscore" {|<p><em>abc</em></p>|} {|_abc_|}
 
 let test_em_strong () =
   check "em_strong" {|<p><em><strong>abc</strong></em></p>|} {|***abc***|};
-  check "em_strong" {|<p><em><strong>abc</strong></em></p>|} {|***abc|}
+  check "em_strong" {|<p><em><strong>abc</strong></em></p>|} {|***abc|};
+  check "em_strong underscore" {|<p><em><strong>abc</strong></em></p>|}
+    {|___abc___|}
 
 let test_escape () =
   check "escape" "<p>&amp;&lt;&gt;&quot;&apos;</p>" {|&<>"'|};
@@ -263,7 +266,8 @@ let test_strike () = check "strike" {|<p>a<s>b</s>c</p>|} {|a~~b~~c|}
 
 let test_strong () =
   check "strong" {|<p><strong>abc</strong></p>|} {|**abc**|};
-  check "strong" {|<p><strong>abc</strong></p>|} {|**abc|}
+  check "strong" {|<p><strong>abc</strong></p>|} {|**abc|};
+  check "strong underscore" {|<p><strong>abc</strong></p>|} {|__abc__|}
 
 let test_unicode () = check "unicode" {|<p>&#x1F602;</p>|} {|&#x1F602;|}
 

@@ -3,13 +3,13 @@
 (* SYNTAX: START *)
 
 module Em : SpanRule.S
-(** Emphasis: e.g. [*abc*] *)
+(** Emphasis: e.g. [*abc*] or [_abc_] *)
 
 module Strong : SpanRule.S
-(** Strong: e.g. [**abc**] *)
+(** Strong: e.g. [**abc**] or [__abc__] *)
 
 module EmStrong : SpanRule.S
-(** Emphasis+strong: e.g. [***abc***]
+(** Emphasis+strong: e.g. [***abc***] or [___abc___]
 
 Note that nested forms of emphasis and strong are NOT supported.  For example,
 

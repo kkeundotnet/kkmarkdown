@@ -1,11 +1,11 @@
 module Make (M : sig
-  val first_char : char
+  val first_chars : char list
   val re : Str.regexp
   val stack_elt : Typ.stack_elt
 end) =
 struct
   let is_safe = true
-  let first_char = FirstChar.One M.first_char
+  let first_char = FirstChar.OneOf M.first_chars
 
   let construct _ ({ SpanRule.s; cur; stack } as state) : Typ.span option =
     if Str.string_match M.re s cur then (
@@ -22,31 +22,31 @@ struct
 end
 
 module Em = Make (struct
-  let first_char = '*'
-  let re = Str.regexp "\\*"
+  let first_chars = [ '*'; '_' ]
+  let re = Str.regexp "\\*\\|_"
   let stack_elt = Typ.Em
 end)
 
 module Strong = Make (struct
-  let first_char = '*'
-  let re = Str.regexp "\\*\\*"
+  let first_chars = [ '*'; '_' ]
+  let re = Str.regexp "\\*\\*\\|__"
   let stack_elt = Typ.Strong
 end)
 
 module EmStrong = Make (struct
-  let first_char = '*'
-  let re = Str.regexp "\\*\\*\\*"
+  let first_chars = [ '*'; '_' ]
+  let re = Str.regexp "\\*\\*\\*\\|___"
   let stack_elt = Typ.EmStrong
 end)
 
 module Strike = Make (struct
-  let first_char = '~'
+  let first_chars = [ '~' ]
   let re = Str.regexp "~~"
   let stack_elt = Typ.Strike
 end)
 
 module Code = Make (struct
-  let first_char = '`'
+  let first_chars = [ '`' ]
   let re = Str.regexp "`"
   let stack_elt = Typ.Code
 end)

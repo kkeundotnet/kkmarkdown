@@ -276,15 +276,15 @@ Escaped character: HTML special characters, e.g. [&], [<], etc., are translated 
 
 {1 SpanRuleStack}
 
-Emphasis: e.g. [*abc*]
+Emphasis: e.g. [*abc*] or [_abc_]
 
 {1 SpanRuleStack}
 
-Strong: e.g. [**abc**]
+Strong: e.g. [**abc**] or [__abc__]
 
 {1 SpanRuleStack}
 
-Emphasis+strong: e.g. [***abc***]
+Emphasis+strong: e.g. [***abc***] or [___abc___]
 
 Note that nested forms of emphasis and strong are NOT supported.  For example,
 
