@@ -13,7 +13,9 @@ test:
 doc:
 	scripts/gen_syntax_doc.sh
 	dune build @doc
-	rm -rf docs && cp -r _build/default/_doc/_html docs
+	rm -rf docs
+	cp -r _build/default/_doc/_html docs
+	touch docs/.nojekyll
 
 .PHONY: clean
 clean:
