@@ -1,10 +1,10 @@
 opam-version: "2.0"
 synopsis: "A safe markdown engine"
 description: """
-The goals of kkmarkdown are,
+Two main goals of kkmarkdown are:
 
-* to avoid XSS attack, by supporting limited markdown syntax,
-* to run the same markdown engine in both server and client sides, thanks to js_of_ocaml.
+* avoiding XSS attack by limiting supported markdown syntax,
+* enabling us to run the same markdown engine in both server and client sides, thanks to js_of_ocaml.
 """
 maintainer: "kkeundotnet <kkeundotnet@gmail.com>"
 authors: "kkeundotnet <kkeundotnet@gmail.com>"
