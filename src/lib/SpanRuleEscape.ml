@@ -1,6 +1,6 @@
 let is_safe = true
 let first_char = FirstChar.One '\\'
-let re = Str.regexp "\\\\\\([]\\\\`\\*_{}[()#\\+\\.!-]\\)"
+let re = Str.regexp "\\\\\\([]\\\\`\\*_{}[()#\\+\\.!~-]\\)"
 
 let construct _ ({ SpanRule.s; cur } as state) =
   if Str.string_match re s cur then (

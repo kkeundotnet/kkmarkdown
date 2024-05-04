@@ -3,7 +3,7 @@
     [&lt;], etc.  The following characters should be escaped by backslash in markdown.
 
 {[
-[ ] \ ` * # _ { } ( ) + - . !
+[ ] \ ` * # _ { } ( ) + - . ! ~
 ]} *)
 (* SYNTAX: END *)
 

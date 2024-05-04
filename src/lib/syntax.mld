@@ -271,7 +271,7 @@ Escaped character: HTML special characters, e.g. [&], [<], etc., are translated 
     [&lt;], etc.  The following characters should be escaped by backslash in markdown.
 
 {[
-[ ] \ ` * # _ { } ( ) + - . !
+[ ] \ ` * # _ { } ( ) + - . ! ~
 ]}
 
 {1 SpanRuleStack}
