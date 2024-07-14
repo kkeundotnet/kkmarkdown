@@ -157,6 +157,29 @@ let test_deep_block () =
     >        >
     >        > > no quote here|}
 
+let test_details () =
+  check "details" {|<details><summary>Title</summary><p>body</p></details>|}
+    {||> Title
+
+body
+<||};
+  check "details"
+    {|<details><summary>Title multi-line</summary><p>body multi-line</p></details>|}
+    {||> Title
+multi-line
+
+body
+multi-line
+<||};
+  check "details"
+    {|<details><summary>Title multi-line</summary><p>body multi-line</p></details>|}
+    {||>  Title
+    multi-line
+
+body
+multi-line
+<||}
+
 let test_empty () =
   check "empty" "" "";
   check "empty" "" "\n";
@@ -462,6 +485,7 @@ let tests =
     ("code", `Quick, test_code);
     ("code block", `Quick, test_code_block);
     ("deep block", `Quick, test_deep_block);
+    ("details", `Quick, test_details);
     ("em", `Quick, test_em);
     ("em_strong", `Quick, test_em_strong);
     ("empty", `Quick, test_empty);

@@ -15,6 +15,7 @@ let all : (module BlockRule.S) list =
     (module BlockRuleCode.UnsafeTilde);
     (module BlockRuleCode.Indent);
     (module BlockRuleQuote);
+    (module BlockRuleDetails);
     (module BlockRuleInlineHTML.Div);
     (module BlockRuleInlineHTML.Script);
     (module BlockRuleImg);

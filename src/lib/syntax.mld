@@ -71,6 +71,17 @@ where [_] is a space, i.e. four spaces as indentation.
 
 Or a tab can be used as indentation instead.
 
+{1 BlockRuleDetails}
+
+Details:
+
+{[
+|> Title
+
+contents
+<|
+]}
+
 {1 BlockRuleHeader}
 
 Headers: e.g. [# abc] is for [<h1>] and [## abc] is for [<h2>]. Similar rules are applied for

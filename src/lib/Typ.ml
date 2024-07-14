@@ -16,6 +16,7 @@ type list_typ = Ordered | Unordered
 
 type block =
   | CodeBlock of string list
+  | Details of { title : span list; body : t }
   | H1 of span list
   | H2 of span list
   | H3 of span list
@@ -106,6 +107,12 @@ and pp_span_list f = pp_list pp_span f
 let rec pp_block ~rss f = function
   | CodeBlock code_block ->
       pp_wrap "pre" (pp_wrap "code" (pp_list_with_line pp_chars)) f code_block
+  | Details { title; body } ->
+      pp_wrap "details"
+        (fun f () ->
+          pp_wrap "summary" pp_span_list f title;
+          (pp ~rss) f body)
+        f ()
   | H1 sps -> pp_wrap "h1" pp_span_list f sps
   | H2 sps -> pp_wrap "h2" pp_span_list f sps
   | H3 sps -> pp_wrap "h3" pp_span_list f sps

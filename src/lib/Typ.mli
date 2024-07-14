@@ -18,6 +18,7 @@ type list_typ = Ordered | Unordered
 
 type block =
   | CodeBlock of string list
+  | Details of { title : span list; body : t }
   | H1 of span list
   | H2 of span list
   | H3 of span list
