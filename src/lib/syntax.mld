@@ -73,7 +73,7 @@ Or a tab can be used as indentation instead.
 
 {1 BlockRuleDetails}
 
-Details:
+Details
 
 {[
 |> Title
@@ -81,6 +81,8 @@ Details:
 contents
 <|
 ]}
+
+Note that nested details are not supported.
 
 {1 BlockRuleHeader}
 
