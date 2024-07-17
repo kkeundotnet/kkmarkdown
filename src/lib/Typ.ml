@@ -66,9 +66,7 @@ let pp_open ?classes f tag =
 let pp_close f tag = F.fprintf f "</%s>" tag
 
 let pp_wrap tag ?classes pp f x =
-  (match classes with
-  | None -> pp_open f tag
-  | Some classes -> pp_open ~classes f tag);
+  pp_open ?classes f tag;
   pp f x;
   pp_close f tag
 
@@ -127,7 +125,8 @@ let rec pp_block ~rss f = function
   | Quote quote -> pp_wrap "blockquote" (pp ~rss) f quote
   | UnsafeCodeBlock { cb; classes } ->
       let pp_wrap_code pp f x =
-        if rss then pp_wrap "code" pp f x else pp_wrap "code" ~classes pp f x
+        let classes = if rss then None else Some classes in
+        pp_wrap "code" ?classes pp f x
       in
       pp_wrap "pre" (pp_wrap_code (pp_list_with_line pp_chars)) f cb
   | UnsafeImg { alt; link; classes } ->
