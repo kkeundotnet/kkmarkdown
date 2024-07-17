@@ -60,14 +60,14 @@ let pp_char = function
 
 let pp_chars s f = String.iter (fun c -> pp_char c f) s
 
-let pp_classes classes =
-  pp_list ~pp_sep:(pp_print_char ' ') pp_print_string classes
-
-let pp_open ?classes tag =
+let pp_classes_prop ?classes =
   match classes with
-  | None -> F.dprintf {|<%s>|} tag
-  | Some classes -> F.dprintf {|<%s class="%t">|} tag (pp_classes classes)
+  | Some classes ->
+      F.dprintf {| class="%t"|}
+        (pp_list ~pp_sep:(pp_print_char ' ') pp_print_string classes)
+  | None -> pp_nop
 
+let pp_open ?classes tag = F.dprintf {|<%s%t>|} tag (pp_classes_prop ?classes)
 let pp_close tag = F.dprintf "</%s>" tag
 let pp_wrap tag ?classes pp = pp_open ?classes tag ++ pp ++ pp_close tag
 let pp_list_with_line pp l = pp_list ~pp_sep:(pp_print_char '\n') pp l
@@ -118,18 +118,12 @@ let rec pp_block ~rss = function
       let classes = if rss then None else Some classes in
       pp_wrap "pre" (pp_wrap "code" ?classes (pp_list_with_line pp_chars cb))
   | UnsafeImg { alt; link; classes } ->
-      let pp_class_prop =
-        if not rss then F.dprintf {| class="%t"|} (pp_classes classes)
-        else pp_nop
-      in
-      let pp_img =
-        F.dprintf {|<img alt="%t" src="%t"%t>|} (pp_chars alt) (pp_chars link)
-          pp_class_prop
-      in
-      pp_wrap "p" pp_img
+      let classes = if rss then None else Some classes in
+      pp_wrap "p"
+        (F.dprintf {|<img alt="%t" src="%t"%t>|} (pp_chars alt) (pp_chars link)
+           (pp_classes_prop ?classes))
   | UnsafeInlineHtml lines ->
-      if not rss then pp_list ~pp_sep:(pp_print_char '\n') pp_print_string lines
-      else pp_nop
+      if not rss then pp_list_with_line pp_print_string lines else pp_nop
 
 and pp_li ~rss = function
   | Li sps -> pp_wrap "li" (pp_span_list sps)
