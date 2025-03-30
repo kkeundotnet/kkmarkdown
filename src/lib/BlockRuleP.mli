@@ -1,11 +1,9 @@
 (* SYNTAX: START *)
 (** Paragraph
 
-{[
-abc
-
-def
-]} *)
+    {[
+      abc def
+    ]} *)
 (* SYNTAX: END *)
 
 include BlockRule.S

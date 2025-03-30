@@ -11,13 +11,14 @@ module Strong : SpanRule.S
 module EmStrong : SpanRule.S
 (** Emphasis+strong: e.g. [***abc***] or [___abc___]
 
-Note that nested forms of emphasis and strong are NOT supported.  For example,
+    Note that nested forms of emphasis and strong are NOT supported. For
+    example,
 
-{[
-***word*word**
-]}
+    {[
+      ***word*word**
+    ]}
 
-will NOT be translated as you expect. *)
+    will NOT be translated as you expect. *)
 
 module Strike : SpanRule.S
 (** Strike: e.g. [~~abc~~] *)

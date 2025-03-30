@@ -5,58 +5,58 @@
 module Backquote : BlockRule.S
 (** Code block with backquote
 
-{[
-```
-abc
-```
-]} *)
+    {[
+      ```
+      abc
+      ```
+    ]} *)
 
 module Tilde : BlockRule.S
 (** Code block with tilde
 
-{[
-~~~
-abc
-~~~
-]} *)
+    {[
+      ~~~
+      abc
+      ~~~
+    ]} *)
 
 module UnsafeBackquote : BlockRule.S
 (** {^ UNSAFE} Code block with backquote
 
-{[
-``` {.abc}
-abc
-```
-]}
+    {[
+      ``` {.abc}
+      abc
+      ```
+    ]}
 
-is tranlsated to
+    is tranlsated to
 
-{[
-<pre><code class="abc">abc</code></pre>
-]} *)
+    {[
+      <pre><code class="abc">abc</code></pre>
+    ]} *)
 
 module UnsafeTilde : BlockRule.S
 (** {^ UNSAFE} Code block with tilde
 
-{[
-~~~ {.abc}
-abc
-~~~
-]} *)
+    {[
+      ~~~ {.abc}
+      abc
+      ~~~
+    ]} *)
 
 module Indent : BlockRule.S
 (** Code block with indent
 
-{[
-____abc
-]}
+    {[
+      ____abc
+    ]}
 
-where [_] is a space, i.e. four spaces as indentation.
+    where [_] is a space, i.e. four spaces as indentation.
 
-{[
-\tabc
-]}
+    {[
+      \tabc
+    ]}
 
-Or a tab can be used as indentation instead. *)
+    Or a tab can be used as indentation instead. *)
 
 (* SYNTAX: END *)

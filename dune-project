@@ -1,3 +1,3 @@
-(lang dune 3.6)
+(lang dune 3.14)
 (name kkmarkdown)
-(version 1.1.0)
+(version 1.2.0)

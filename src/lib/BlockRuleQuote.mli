@@ -1,9 +1,9 @@
 (* SYNTAX: START *)
 (** Quote
 
-{[
-> abc
-]} *)
+    {[
+      > abc
+    ]} *)
 (* SYNTAX: END *)
 
 include BlockRule.S

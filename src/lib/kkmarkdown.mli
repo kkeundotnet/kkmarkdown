@@ -11,4 +11,5 @@ val trans_from_stdin : ?unsafe:bool -> unit -> Typ.t
 
 val trans_to_string : ?unsafe:bool -> ?rss:bool -> string -> string
 (** @param unsafe Enable unsafe rules. False by default.
-@param rss Suppress the elements that are inappropriate for RSS. False by default. *)
+    @param rss
+      Suppress the elements that are inappropriate for RSS. False by default. *)

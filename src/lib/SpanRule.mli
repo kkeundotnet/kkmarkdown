@@ -12,6 +12,6 @@ module type S = sig
   val first_char : FirstChar.t
 
   val construct : (string -> Typ.span list) -> state -> Typ.span option
-  (** Try to apply a rule. The first parameter is the (recursive) function that parses a string as a
-      span list. *)
+  (** Try to apply a rule. The first parameter is the (recursive) function that
+      parses a string as a span list. *)
 end

@@ -1,14 +1,14 @@
 (* SYNTAX: START *)
 (** Details
 
-{[
-|> Title
+    {[
+      |> Title
 
-contents
-<|
-]}
+      contents
+      <|
+    ]}
 
-Note that nested details are not supported. *)
+    Note that nested details are not supported. *)
 (* SYNTAX: END *)
 
 include BlockRule.S

@@ -5,9 +5,9 @@ A safe markdown engine
 
 Goal:
 
-* To avoid XSS attack, by supporting [limited markdown
-  syntax](https://kkeundotnet.github.io/kkmarkdown/kkmarkdown/syntax.html).
-* To run the same markdown engine in both server and client sides, thanks to
+* To avoid XSS attack by supporting
+  [markdown syntax being supported](https://kkeundotnet.github.io/kkmarkdown/kkmarkdown/syntax.html).
+* To run the same markdown engine both in server and client sides, thanks to
   [js_of_ocaml](https://github.com/ocsigen/js_of_ocaml).
 
 Not goal:
