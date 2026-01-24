@@ -35,9 +35,9 @@ for more information.
 
 let main { rss; unsafe; input_files } =
   (match input_files with
-  | [] -> Kkmarkdown.trans_from_stdin ~unsafe ()
-  | [ file ] -> Kkmarkdown.trans_from_file ~unsafe file
-  | _ -> invalid_arg "Multiple files are given.")
+    | [] -> Kkmarkdown.trans_from_stdin ~unsafe ()
+    | [ file ] -> Kkmarkdown.trans_from_file ~unsafe file
+    | _ -> invalid_arg "Multiple files are given.")
   |> Typ.pp ~rss F.std_formatter;
   F.print_flush ()
 

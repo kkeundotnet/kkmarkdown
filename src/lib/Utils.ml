@@ -10,9 +10,9 @@ let read_classes =
   fun s ->
     String.trim s |> Str.split re_space
     |> List.filter_map (fun class_ ->
-           if Str.string_match re_class class_ 0 then
-             Some (Str.matched_group 1 class_)
-           else None)
+        if Str.string_match re_class class_ 0 then
+          Some (Str.matched_group 1 class_)
+        else None)
 
 let remove_trailing_chars cond s =
   let len = String.length s in

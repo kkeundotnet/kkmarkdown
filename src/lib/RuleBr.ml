@@ -53,6 +53,6 @@ let merge_spans spans_list =
 let construct trans_spans lines =
   separate lines
   |> List.rev_map (fun rev_lines ->
-         let lines = List.rev rev_lines in
-         trans_spans (merge_lines lines))
+      let lines = List.rev rev_lines in
+      trans_spans (merge_lines lines))
   |> merge_spans
