@@ -43,7 +43,7 @@ class Kkmarkdown
         $descriptorspec = [
             0 => ['pipe', 'r'], // stdin is a pipe that the child will read from
             1 => ['pipe', 'w'], // stdout is a pipe that the child will write to
-            2 => ['file', '/tmp/kkmarkdown.log', 'a'] // stderr is a file to write to
+            2 => ['file', '/tmp/kkmarkdown.log', 'a'], // stderr is a file to write to
         ];
         $process = proc_open($this->get_cmd(), $descriptorspec, $pipes);
         if (is_resource($process)) {
