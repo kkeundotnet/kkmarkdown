@@ -27,7 +27,6 @@ for file in $MLIS; do
          { ret=flag; if (unset_flag) { flag=0; unset_flag=0; } }
          ret" $file \
     | sed -E -e 's/\(\*\* | \*\)//g' \
-    | sed -E -e 's/^    //g' \
     >> $TGT
 done
 echo -e "\nThat's it.  Enjoy kkmarkdown!" >> $TGT

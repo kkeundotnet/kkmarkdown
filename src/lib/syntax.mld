@@ -86,8 +86,10 @@ Note that nested details are not supported.
 
 {1 BlockRuleHeader}
 
-Headers: e.g. [# abc] is for [<h1>] and [## abc] is for [<h2>]. Similar rules are applied for
-    [<h3>] to [<h6>].  Optionally, trailing sharps are acceptable, i.e. [# abc #].
+Headers: e.g. [# abc] is for [<h1>] and [## abc] is for
+    [<h2>]. Similar rules are applied for [<h3>] to
+    [<h6>]. Optionally, trailing sharps are acceptable, i.e. [# abc
+    #].
 
 {1 BlockRuleHeader}
 
@@ -219,7 +221,8 @@ rather than something like
 </ul>
 ]}
 
-This is beacause, I am too {i lazy} to think about such ambiguous corner cases. /o\
+This is beacause, I am too {i lazy} to think about such ambiguous
+corner cases. /o\
 
 {1 BlockRuleList}
 
@@ -244,9 +247,7 @@ Ordered list
 Paragraph
 
 {[
-abc
-
-def
+abc def
 ]}
 
 {1 BlockRuleQuote}
@@ -265,8 +266,8 @@ Br: e.g. [abc__<end-of-line>], where '[_]' is a space
 
 Link: e.g. [<https://kkeun.net>]
 
-For simplicity, the [https://] prefix is omitted in the translated result, i.e. the example above is
-translated to
+For simplicity, the [https://] prefix is omitted in the translated
+result, i.e. the example above is translated to
 
 {[
 <a href="https://kkeun.net">kkeun.net</a>
@@ -276,12 +277,13 @@ Note that the link address must start with [https://] or [http://].
 
 {1 SpanRuleA}
 
-{^ UNSAFE} Link: e.g. [\[kkeundotnet\](https://kkeun.net)]
+{^ UNSAFE} Link: e.g. [[kkeundotnet](https://kkeun.net)]
 
 {1 SpanRuleEscape}
 
-Escaped character: HTML special characters, e.g. [&], [<], etc., are translated to [&amp;],
-    [&lt;], etc.  The following characters should be escaped by backslash in markdown.
+Escaped character: HTML special characters, e.g. [&], [<], etc.,
+    are translated to [&amp;], [&lt;], etc. The following characters
+    should be escaped by backslash in markdown.
 
 {[
 [ ] \ ` * # _ { } ( ) + - . ! ~
@@ -299,7 +301,8 @@ Strong: e.g. [**abc**] or [__abc__]
 
 Emphasis+strong: e.g. [***abc***] or [___abc___]
 
-Note that nested forms of emphasis and strong are NOT supported.  For example,
+Note that nested forms of emphasis and strong are NOT supported. For
+example,
 
 {[
 ***word*word**
